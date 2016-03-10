@@ -16,7 +16,7 @@
     ],
     "autoload": {
         "psr-4": {
-            "MakinaCorpus\\RedisBundle\\": "src/"
+            "MakinaCorpus\\RedisBundle\\": "."
         },
         "exclude-from-classmap": [
             "/src/Tests/"
