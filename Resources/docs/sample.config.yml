@@ -1,0 +1,76 @@
+redis:
+
+  client:
+    # Clients configuration
+    # --
+    #
+    # The 'default' client should always exists, you may add as many as you
+    # wish, each component needing a Redis client will get the 'default' one
+    # per default, but may specify another alias.
+    #
+    # In case of non existing alias, default behavior is to fallback on the
+    # 'default' client if defined.
+    #
+    # 'type' is required for every defined client, it may be any of 'phpredis'
+    # or 'predis', for predis usage you need to have the Predis library as a
+    # dependency of your project.
+    #
+    # All other properties that 'type' are optional, default values are the
+    # following:
+    #   - host:       tcp://127.0.0.1:6379/0
+    #   - password:   ~
+    #   - cluster:    false
+    #   - failover:   0
+    #   - persistent: false
+    #
+    # If no database is specified in the host DNS, it will fallback on 0.
+    #
+    # If you specify persistent set to true and if the connector supports it
+    # PHP will use a persistent TCP connections pool.
+    #
+    # A few options are not compatible together and must be exclusive:
+    #   - You cannot use 'failover' without 'cluster' set to true
+    #   - With the Predis library, you cannot set 'persistent' to true
+    #
+    # The following client will use the Redis server at hostname 1.2.3.4 using
+    # a TCP connection, in order to use a UNIX socket instead, you may use a
+    # DSN starting with unix:// scheme following by the path.
+    #
+    default:
+      host: tcp://1.2.3.4:6789/1
+      type: phpredis
+      persistent: true
+
+    # Connecting via a UNIX socket
+    # --
+    default:
+      host: unix:///var/run/redis/socket
+      type: phpredis 
+
+    # Cluster mode
+    # --
+    #
+    # An example of a cluster configuration, please note that when using
+    # cluster mode, a few other options might not be available.
+    #
+    # Because phpredis provides this feature, it is exposed at the client
+    # configuration level, the failover mode. We supporting setting the
+    # 3 possible values:
+    #   - 0: no failover, query only masters
+    #   - 1: allow readonly queries on slave when master is unreachable
+    #   - 2: allow readonly queries to be issued randomly on any server
+    #
+    # For more information, please see:
+    #    http://redis.io/topics/cluster-spec
+    #    http://redis.io/topics/cluster-tutorial
+    #    http://github.com/phpredis/phpredis/blob/develop/cluster.markdown
+    #
+    # You may specify any number of servers from 1 to any.
+    #
+    # Please note that as of now, we do not support cluster mode usage
+    # with the Predis connector.
+    #
+    some_cluster:
+      host: ['tcp://1.2.3.4:30001', 'tcp://2.3.4.5:30002']
+      type: phpredis
+      cluster: true
