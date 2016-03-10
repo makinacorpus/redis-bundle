@@ -1,0 +1,30 @@
+{
+    "name": "makinacorpus/redis-bundle",
+    "type" : "library",
+    "description": " Redis API standalone client manager or optional Symfony bundle configurator",
+    "homepage" : "http://github.com/makinacorpus/redis-bundle",
+    "license" : "GPL-2",
+    "authors": [
+        {
+            "name": "Pierre Rineau",
+            "email": "pierre.rineau@makina-corpus.com"
+        },
+        {
+            "name": "Makina Corpus",
+            "homepage": "http://makina-corpus.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "MakinaCorpus\\RedisBundle\\": "src/"
+        },
+        "exclude-from-classmap": [
+            "/src/Tests/"
+        ]
+    },
+    "suggest" : {
+        "symfony/dependency-injection" : "For notification formatters registration",
+        "symfony/event-dispatcher" : "Allows notification to be tied to event subscribers"
+    },
+    "minimum-stability" : "dev"
+}
