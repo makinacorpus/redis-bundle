@@ -15,59 +15,10 @@ bundle providing advanced component configurators and config builder.
 
 ## Get started
 
-In all cases, you might want to choose a Redis connector first, If you want to
-use the `predis` client library, you have to add the `predis/predis` package:
-
-```bash
-composer require predis/predis ^1.0
-```
-If you want to use `phpredis` client library, proceeed with
-[phpredis documentation](https://github.com/phpredis/phpredis)
-
-### As a Symfony bundle
-
-First install and register this bundle:
-
-```bash
-composer require makina-corpus/redis-bundle
-```
-
-Then the RedisBundle to your application kernel:
-
-```php
-<?php
-public function registerBundles()
-{
-    $bundles = [
-        // ...
-        new MakinaCorpus\RedisBundle\MakinaCorpusRedisBundle(),
-        // ...
-    ];
-    ...
-}
-```
-What you need then is to write the right parameters into your _config.yml_
-file, for this please report to the documentation samples:
-
- *  [sample.config.yml](Resources/docs/sample.config.yml) for an example
-    of advanced client configuration, fully documented as it is written;
-
- *  [sample.services.yml](Resources/docs/sample.services.yml) for multiple
-    exemples of how to inject the various Redis clients into your services.
-
-### As a PHP component
-
-First use this component as dependency in your application:
-
-```bash
-composer require makina-corpus/redis-bundle
-```
-
-@todo standalone manager configuration
-
-# Advanced confifuration
-
-@todo
+ *  [Get started for everyone](Resources/docs/get-started.md)
+ *  [Setup tutorial for Symfony 3](Resources/docs/symfony3.md)
+ *  [Setup tutorial for Drupal 7](Resources/docs/drupal7.md)
+ *  [Setup tutorial for Drupal 8](Resources/docs/drupal8.md)
 
 # Why another bundle ?
 
@@ -106,24 +57,3 @@ needs, it still is very different:
     [Drupal redis module](https://www.drupal.org/project/redis) we wrote a few
     years back, that pre-dates the afformentioned Symfony bundle, with different
     needs, and some years of working code behind.
-
-# Todo list
-
-In order of priority:
-
- *  phpredis: finish implementation
- *  test: test phpredis connection
- *  test: unit test RedisAwareTrait
- *  [X] symfony: write extension and configuration
- *  symfony: test extension and configuration
- *  symfony: write client injection by tag compiler pass
- *  [X] phpredis: support \RedisCluster
- *  [X] phpredis: support \RedisArray
- *  test: test phpredis cluster mode
- *  symfony: consolidate configuration
- *  predis: write implementation
- *  test: test predis connection
- *  symfony: write Doctrine cache client
- *  drupal: port Drupal 7 cache backend
- *  drupal: write Drupal 8 cache backend
- *  symfony: ... depending on needs
