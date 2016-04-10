@@ -1,5 +1,7 @@
 <?php
 
+namespace MakinaCorpus\RedisBundle\Tests;
+
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 

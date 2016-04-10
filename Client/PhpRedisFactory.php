@@ -42,16 +42,18 @@ class PhpRedisFactory implements StandaloneFactoryInterface
             }
 
             $client = new \Redis();
+            /** @var $dsn Dsn */
+            $dsn = $options['host'][0];
 
             if ($options['persistent']) {
                 if (empty($options['socket'])) {
-                    $client->connect($options['host'], $options['port'], $options['timeout']);
+                    $client->connect($dsn->formatPhpRedis(), $dsn->getPort(), $options['timeout']);
                 } else {
                     $client->connect($options['socket']);
                 }
             } else {
                 if (empty($options['socket'])) {
-                    $client->pconnect($options['host'], $options['port'], $options['timeout']);
+                    $client->pconnect($dsn->formatPhpRedis(), $dsn->getPort(), $options['timeout']);
                 } else {
                     $client->pconnect($options['socket']);
                 }

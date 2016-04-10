@@ -1,5 +1,7 @@
 <?php
 
+namespace MakinaCorpus\RedisBundle\Tests;
+
 use MakinaCorpus\RedisBundle\Client\Dsn;
 
 class DsnParseTest extends \PHPUnit_Framework_TestCase

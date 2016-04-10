@@ -1,5 +1,7 @@
 <?php
 
+namespace MakinaCorpus\RedisBundle\Tests;
+
 abstract class AbstractConfigTest extends \PHPUnit_Framework_TestCase
 {
     protected function getConfigArray()

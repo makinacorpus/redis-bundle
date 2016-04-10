@@ -23,6 +23,7 @@
         ]
     },
     "suggest" : {
+        "psr/cache" : "For cache all backends usage",
         "symfony/dependency-injection" : "For notification formatters registration",
         "symfony/event-dispatcher" : "Allows notification to be tied to event subscribers"
     },

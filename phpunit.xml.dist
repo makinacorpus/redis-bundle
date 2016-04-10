@@ -26,6 +26,7 @@
     </filter>
 
     <php>
-        <env name="REDIS_DSN" value="" />
+        <env name="REDIS_DSN_NORMAL" value="" />
+        <env name="REDIS_DSN_SHARD" value="" />
     </php>
 </phpunit>

@@ -68,7 +68,7 @@ class StandaloneManager
     /**
      * Default constructor
      *
-     * @param StandaloneFactoryInterface $factory
+     * @param ClientStandaloneFactoryInterface $factory
      *   Client factory
      * @param array $config
      *   Server connection info list
@@ -77,6 +77,16 @@ class StandaloneManager
     {
         $this->factory = $factory;
         $this->config = $config;
+    }
+
+    /**
+     * Get factory
+     *
+     * @return StandaloneFactoryInterface
+     */
+    public function getFactory()
+    {
+        return $this->factory;
     }
 
     /**
