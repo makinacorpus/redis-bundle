@@ -22,7 +22,7 @@ class PhpRedisShardedPsrCacheTest extends AbstractPsrCacheTest
     /**
      * {@inheritdoc}
      */
-    protected function buildCacheItemPool($namespace, $beParanoid = false, $maxLifetime = null)
+    protected function buildCacheItemPool($namespace, $beParanoid = false, $maxLifetime = null, $canPipeline = true)
     {
         $manager = new StandaloneManager(
             new PhpRedisFactory(),

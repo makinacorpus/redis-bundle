@@ -105,15 +105,26 @@ class PhpRedisShardedCacheItemPool extends PhpRedisCacheItemPool
     }
 
     /**
-     * Write the cache item
-     *
-     * Only the item key and value should be used, all other data is probably
-     * already outdated, expire time must be computed from the $ttl parameter
-     * and not from the CacheItem value.
-     *
-     * @param CacheItem $item
-     * @param string $checksumId
-     * @param int $ttl
+     * {@inheritdoc}
+     */
+    public function deleteItems(array $keys)
+    {
+        if ($this->canPipeline) {
+            $client = $this->getClient();
+            $client->multi(\Redis::PIPELINE);
+            foreach ($keys as $key) {
+                $client->del($this->getKey($key));
+            }
+            $client->exec();
+        } else {
+            foreach ($keys as $key) {
+                $this->deleteItem($key);
+            }
+        }
+    }
+
+    /**
+     * {@inheritdoc}
      */
     protected function doWrite(CacheItem $item, $checksumId, $ttl)
     {
@@ -133,7 +144,7 @@ class PhpRedisShardedCacheItemPool extends PhpRedisCacheItemPool
     }
 
     /**
-     * Clear all items from the pool
+     * {@inheritdoc}
      */
     protected function doClear()
     {

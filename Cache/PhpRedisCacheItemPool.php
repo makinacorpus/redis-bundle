@@ -274,15 +274,7 @@ class PhpRedisCacheItemPool extends AbstractCacheItemPool
     }
 
     /**
-     * Write the cache item
-     *
-     * Only the item key and value should be used, all other data is probably
-     * already outdated, expire time must be computed from the $ttl parameter
-     * and not from the CacheItem value.
-     *
-     * @param CacheItem $item
-     * @param string $checksumId
-     * @param int $ttl
+     * {@inheritdoc}
      */
     protected function doWrite(CacheItem $item, $checksumId, $ttl)
     {
@@ -312,7 +304,7 @@ class PhpRedisCacheItemPool extends AbstractCacheItemPool
     }
 
     /**
-     * Clear all items from the pool
+     * {@inheritdoc}
      */
     protected function doClear()
     {

@@ -225,8 +225,7 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
     /**
      * Get current checksum
      *
-     * @param boolean $refresh
-     *   Set this to true to force refresh from server
+     * @param string $id
      *
      * @return string
      *   The current checksum, if none was present on the server a new one
@@ -264,7 +263,11 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
      */
     protected function isItemValid(CacheItem $item)
     {
-        return $item->isHit() && !$item->isExpired() && $this->isItemChecksumValid($item->getChecksum());
+        return
+            $item->isHit() &&
+            !$item->isExpired() &&
+            $this->isItemChecksumValid($item->getChecksum())
+        ;
     }
 
     /**
@@ -290,7 +293,7 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
             return new CacheItem($key, false);
         }
 
-        if (!$this->isItemValid($item)) {
+        if ($item->isHit() && !$this->isItemValid($item)) {
 
             // Proceed to delete on read, on sharded environment we can not
             // proceed with flush or massive key deletes, especially when
@@ -326,7 +329,7 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
                 // anything about our custom consistency checks, this must be
                 // done without treating deferred items, because they are already
                 // know to be valid.
-                if (!$this->isItemValid($ret[$key])) {
+                if ($ret[$key]->isHit() && !$this->isItemValid($ret[$key])) {
                     $ret[$key] = new CacheItem($key, false);
                     $del[] = $key;
                 }
@@ -336,10 +339,21 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
         }
 
         if ($del) {
-            $this->deleteItems($keys);
+            $this->deleteItems($del);
         }
 
         return $ret;
+    }
+
+    /**
+     * Generate a new checksum and set the object internals to match the new one
+     *
+     * @param string $id
+     *   Checksum identifier to regenerate
+     */
+    protected function regenerateChecksum($id)
+    {
+        $this->checksum[$id] = $this->doRegenerateChecksum($id);
     }
 
     /**
@@ -347,7 +361,7 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
      */
     public function clear()
     {
-        $this->doRegenerateChecksum(self::CHECKSUM_POOL);
+        $this->regenerateChecksum(self::CHECKSUM_POOL);
         $this->doClear();
 
         return true;
