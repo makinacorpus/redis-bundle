@@ -26,86 +26,6 @@ class PhpRedisCacheItemPool extends AbstractCacheItemPool
     }
 
     /**
-     * Build item from the given CacheItem
-     *
-     * @param CacheItem $item
-     *
-     * @return scalar[]
-     */
-    protected function buildItem(CacheItem $item, $checksumId, $tags = [])
-    {
-        $data = $item->get();
-        $serialized = 0;
-
-        if (null !== $data && !is_scalar($data)) {
-            $data = serialize($data);
-            $serialized = 1;
-        }
-
-        return [
-            'data'        => $data,
-            'serialized'  => $serialized,
-            'checksum'    => $this->getCurrentChecksum($checksumId),
-            'created'     => (new \DateTime())->format(\DateTime::ISO8601),
-            'expires'     => $item->shouldExpire() ? $item->getExpiryDate()->format(\DateTime::ISO8601) : null,
-            'tags'        => implode(';', $tags),
-        ];
-    }
-
-    /**
-     * Expand item from given Redis hash
-     *
-     * @param scalar[] $data
-     *
-     * @return CacheItem
-     */
-    protected function expandItem($key, $data)
-    {
-        // Those are invalid items, drop them
-        if (!array_key_exists('checksum', $data)) {
-            return new CacheItem($key, false);
-        }
-        if (!array_key_exists('data', $data)) {
-            return new CacheItem($key, false);
-        }
-
-        // Those are incomplete, but cache item is still valid
-        if (!array_key_exists('tags', $data)) {
-            $data['tags'] = [];
-        }
-        if (!array_key_exists('created', $data)) {
-            $data['created'] = null;
-        }
-        if (!array_key_exists('expires', $data)) {
-            $data['expires'] = null;
-        }
-
-        if (!empty($data['serialized'])) {
-            $data['data'] = unserialize($data['data']);
-
-            if (!$data['data']) {
-                // Unserialized failed, just return a non-hit item
-                return new CacheItem($key, false);
-            }
-        }
-
-        $item = new CacheItem(
-            $key,
-            true,
-            $data['data'],
-            $data['checksum'],
-            \DateTime::createFromFormat(\DateTime::ISO8601, $data['created']),
-            explode(';', $data['tags'])
-        );
-
-        if (!empty($data['expires'])) {
-            $item->expiresAt(\DateTime::createFromFormat(\DateTime::ISO8601, $data['expires']));
-        }
-
-        return $item;
-    }
-
-    /**
      * {@inheritdoc}
      */
     protected function doFetchChecksum($id, $regenerate = false)
@@ -185,10 +105,10 @@ class PhpRedisCacheItemPool extends AbstractCacheItemPool
         $data = $this->getClient()->hgetall($this->getKey($key));
 
         if (empty($data) || !is_array($data)) {
-            return new CacheItem($key, false);
+            return $this->getHydrator()->miss($key);
         }
 
-        return $this->expandItem($key, $data);
+        return $this->getHydrator()->hydrate($key, $data);
     }
 
     /**
@@ -208,9 +128,9 @@ class PhpRedisCacheItemPool extends AbstractCacheItemPool
 
         foreach (array_values($idList) as $index => $id) {
             if (!empty($replies[$index]) && is_array($replies[$index])) {
-                $ret[$id] = $this->expandItem($id, $replies[$index]);
+                $ret[$id] = $this->getHydrator()->hydrate($id, $replies[$index]);
             } else {
-                $ret[$id] = new CacheItem($id, false);
+                $ret[$id] = $this->getHydrator()->miss($id);
             }
         }
 
@@ -249,7 +169,7 @@ class PhpRedisCacheItemPool extends AbstractCacheItemPool
 
         $client = $this->getClient();
         $key    = $this->getKey($item->getKey());
-        $data   = $this->buildItem($item, $checksumId);
+        $data   = $this->getHydrator()->extract($item, $this->getCurrentChecksum($checksumId));
 
         if ($ttl) {
             $client

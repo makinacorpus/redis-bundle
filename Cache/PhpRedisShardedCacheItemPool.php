@@ -113,7 +113,7 @@ class PhpRedisShardedCacheItemPool extends PhpRedisCacheItemPool
 
         $client = $this->getClient();
         $key    = $this->getKey($item->getKey());
-        $data   = $this->buildItem($item, $checksumId);
+        $data   = $this->getHydrator()->extract($item, $this->getCurrentChecksum($checksumId));
 
         $client->hmset($key, $data);
         if ($ttl) {

@@ -37,11 +37,6 @@ class CacheItem implements CacheItemInterface
     private $created;
 
     /**
-     * @var string[]
-     */
-    private $tags;
-
-    /**
      * Default constructor
      *
      * @param string $key
@@ -49,16 +44,14 @@ class CacheItem implements CacheItemInterface
      * @param string $checksum
      * @param string $created
      * @param mixed $value
-     * @param string[] $tags
      */
-    public function __construct($key, $isHit = false, $value = null, $checksum = null, $created = null, $tags = [])
+    public function __construct($key, $isHit = false, $value = null, $checksum = null, $created = null)
     {
         $this->key = $key;
         $this->isHit = $isHit;
         $this->value = $value;
         $this->checksum = $checksum;
         $this->created = $created;
-        $this->tags = $tags;
     }
 
     /**
@@ -148,6 +141,16 @@ class CacheItem implements CacheItemInterface
     public function getExpiryDate()
     {
         return $this->expires;
+    }
+
+    /**
+     * Get creation date
+     *
+     * @return \DateTimeInterface
+     */
+    public function getCreationDate()
+    {
+        return $this->created ? $this->created : new \DateTime();
     }
 
     /**

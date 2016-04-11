@@ -91,6 +91,11 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
     private $checksum = [];
 
     /**
+     * @var CacheItemHydrator
+     */
+    private $hydrator;
+
+    /**
      * Default constructor
      *
      * @param boolean $beParanoid
@@ -102,6 +107,30 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
     {
         $this->beParanoid   = $beParanoid;
         $this->maxLifetime  = $this->computeLifetime($maxLifetime, self::MAXLIFETIME);
+    }
+
+    /**
+     * Set cache item hydrator
+     *
+     * @param CacheItemHydrator $hydrator
+     */
+    final public function setHydrator(CacheItemHydrator $hydrator)
+    {
+        $this->hydrator = $hydrator;
+    }
+
+    /**
+     * Get hydrator
+     *
+     * @return CacheItemHydrator
+     */
+    final protected function getHydrator()
+    {
+        if (null === $this->hydrator) {
+            $this->hydrator = new CacheItemHydrator();
+        }
+
+        return $this->hydrator;
     }
 
     /**
@@ -288,7 +317,7 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
         $item = $this->doFetch($key);
 
         if (!$item) {
-            return new CacheItem($key, false);
+            return $this->hydrator->miss($key);
         }
 
         if ($item->isHit() && !$this->isItemValid($item)) {
@@ -302,7 +331,7 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
             // most, making this rather useless.
             $this->deleteItem($key);
 
-            return new CacheItem($key, false);
+            return $this->hydrator->miss($key);
         }
 
         return $item;
@@ -328,11 +357,11 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
                 // done without treating deferred items, because they are already
                 // know to be valid.
                 if ($ret[$key]->isHit() && !$this->isItemValid($ret[$key])) {
-                    $ret[$key] = new CacheItem($key, false);
+                    $ret[$key] = $this->hydrator->miss($key);
                     $del[] = $key;
                 }
             } else {
-                $ret[$key] = new CacheItem($key, false);
+                $ret[$key] = $this->hydrator->miss($key);
             }
         }
 
