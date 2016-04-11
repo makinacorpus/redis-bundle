@@ -4,10 +4,8 @@ namespace MakinaCorpus\RedisBundle\DependencyInjection;
 
 use MakinaCorpus\RedisBundle\Client\Dsn;
 
-use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
-use Symfony\Component\DependencyInjection\Loader;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 
 use MakinaCorpus\RedisBundle\Client\StandaloneManager;
@@ -81,7 +79,7 @@ class MakinaCorpusRedisExtension extends Extension
                 throw new \InvalidArgumentException(sprintf("Your 'phpredis' extension is too old and does not support cluster"));
             }
             if ($options['password']) {
-                throw new \InvalidArgumentException("'password' is only supported with Redis");
+                throw new \InvalidArgumentException("'password' is only supported with \\Redis");
             }
 
             $definition->setClass('RedisCluster');
@@ -104,16 +102,16 @@ class MakinaCorpusRedisExtension extends Extension
         } else if (1 < count($options['host'])) {
 
             if ($options['timeout']) {
-                throw new \InvalidArgumentException("'timeout' is not supported with RedisArray yet");
+                throw new \InvalidArgumentException("'timeout' is not supported with \\RedisArray yet");
             }
             if ($options['read_timeout']) {
-                throw new \InvalidArgumentException("'read_timeout' is not supported with RedisArray yet");
+                throw new \InvalidArgumentException("'read_timeout' is not supported with \\RedisArray yet");
             }
             if ($options['failover']) {
-                throw new \InvalidArgumentException("'failover' is only supported with RedisCluster");
+                throw new \InvalidArgumentException("'failover' is only supported with \\RedisCluster");
             }
             if ($options['password']) {
-                throw new \InvalidArgumentException("'password' is only supported with Redis");
+                throw new \InvalidArgumentException("'password' is only supported with \\Redis");
             }
 
             $definition->setClass('RedisArray');
@@ -122,10 +120,10 @@ class MakinaCorpusRedisExtension extends Extension
         } else {
 
             if ($options['failover']) {
-                throw new \InvalidArgumentException("'failover' is only supported with RedisCluster");
+                throw new \InvalidArgumentException("'failover' is only supported with \\RedisCluster");
             }
             if ($options['read_timeout']) {
-                throw new \InvalidArgumentException("'read_timeout' is not supported with Redis yet");
+                throw new \InvalidArgumentException("'read_timeout' is not supported with \\Redis yet");
             }
 
             $definition->setClass('Redis');

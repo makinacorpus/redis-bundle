@@ -11,7 +11,7 @@ class PhpRedisFactory implements StandaloneFactoryInterface
     {
         if ($options['cluster']) {
 
-            throw new \Exception("RedisArray is not supported by the standalone manager yet");
+            throw new \Exception("\\RedisCluster is not supported by the standalone manager yet");
 
             /*
             if ($options['persistent']) {
@@ -30,15 +30,15 @@ class PhpRedisFactory implements StandaloneFactoryInterface
 
         } else if (1 < count($options['host'])) {
 
-            throw new \Exception("RedisArray is not supported by the standalone manager yet");
+            throw new \Exception("\\RedisArray is not supported by the standalone manager yet");
 
         } else {
 
             if ($options['failover']) {
-                throw new \InvalidArgumentException("'failover' is only supported with RedisCluster");
+                throw new \InvalidArgumentException("'failover' is only supported with \\RedisCluster");
             }
             if ($options['read_timeout']) {
-                throw new \InvalidArgumentException("'read_timeout' is not supported with Redis yet");
+                throw new \InvalidArgumentException("'read_timeout' is not supported with \\Redis yet");
             }
 
             $client = new \Redis();
