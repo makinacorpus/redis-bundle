@@ -22,7 +22,7 @@ class PhpRedisShardedPsrCacheTest extends AbstractPsrCacheTest
     /**
      * {@inheritdoc}
      */
-    protected function buildCacheItemPool($namespace, $beParanoid = false, $maxLifetime = null, $canPipeline = true)
+    protected function buildCacheItemPool($beParanoid = false, $canPipeline = true, $maxLifetime = null)
     {
         $manager = new StandaloneManager(
             new PhpRedisFactory(),
@@ -31,11 +31,51 @@ class PhpRedisShardedPsrCacheTest extends AbstractPsrCacheTest
 
         return new PhpRedisShardedCacheItemPool(
             $manager->getClient(),
-            $namespace,
+            $this->buildNamespace(),
             false,
             'prefix-' . uniqid(),
             $beParanoid,
             $maxLifetime
         );
+    }
+
+    public function testGetSetNormal()
+    {
+        $this->doTestGetSet($this->buildCacheItemPool(false, false));
+    }
+
+    public function testGetSetParanoid()
+    {
+        $this->doTestGetSet($this->buildCacheItemPool(true, false));
+    }
+
+    public function testGetSetPipeline()
+    {
+        $this->doTestGetSet($this->buildCacheItemPool(false, true));
+    }
+
+    public function testGetSetParanoidPipeline()
+    {
+        $this->doTestGetSet($this->buildCacheItemPool(true, true));
+    }
+
+    public function testFlushNormal()
+    {
+        $this->doTestFlush($this->buildCacheItemPool(false, false));
+    }
+
+    public function testFlushParanoid()
+    {
+        $this->doTestFlush($this->buildCacheItemPool(true, false));
+    }
+
+    public function testFlushPipeline()
+    {
+        $this->doTestFlush($this->buildCacheItemPool(false, true));
+    }
+
+    public function testFlushParanoidPipeline()
+    {
+        $this->doTestFlush($this->buildCacheItemPool(true, true));
     }
 }

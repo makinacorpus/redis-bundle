@@ -6,20 +6,7 @@ use Psr\Cache\CacheItemPoolInterface;
 
 abstract class AbstractPsrCacheTest extends \PHPUnit_Framework_TestCase
 {
-    /**
-     * @return CacheItemPoolInterface
-     */
-    abstract protected function buildCacheItemPool($namespace, $beParanoid = false, $maxLifetime = null, $canPipeline = true);
-
-    /**
-     * @return CacheItemPoolInterface
-     */
-    protected function getCacheItemPool($namespace, $beParanoid = false, $maxLifetime = null, $canPipeline = true)
-    {
-        return $this->buildCacheItemPool($namespace, $beParanoid, $maxLifetime, $canPipeline);
-    }
-
-    protected function getNamespace()
+    protected function buildNamespace()
     {
         return 'test' . uniqid();
     }
@@ -125,14 +112,6 @@ abstract class AbstractPsrCacheTest extends \PHPUnit_Framework_TestCase
         $this->assertFalse($items['e']->isHit());
     }
 
-    public function testGetSet()
-    {
-        $this->doTestGetSet($this->getCacheItemPool($this->getNamespace(), false, null, true));
-        $this->doTestGetSet($this->getCacheItemPool($this->getNamespace(), false, null, false));
-        $this->doTestGetSet($this->getCacheItemPool($this->getNamespace(), true, null, true));
-        $this->doTestGetSet($this->getCacheItemPool($this->getNamespace(), true, null, false));
-    }
-
     protected function doTestFlush(CacheItemPoolInterface $pool)
     {
         $pool->save($pool->getItem('a')->set('a'));
@@ -156,24 +135,8 @@ abstract class AbstractPsrCacheTest extends \PHPUnit_Framework_TestCase
         }
     }
 
-    public function testFlush()
-    {
-        $this->doTestFlush($this->getCacheItemPool($this->getNamespace(), false, null, true));
-        $this->doTestFlush($this->getCacheItemPool($this->getNamespace(), false, null, false));
-        $this->doTestFlush($this->getCacheItemPool($this->getNamespace(), true, null, true));
-        $this->doTestFlush($this->getCacheItemPool($this->getNamespace(), true, null, false));
-    }
-
     protected function doTestMaxLifeTime(CacheItemPoolInterface $pool)
     {
         // @todo
-    }
-
-    public function testMaxLifeTime()
-    {
-        $this->doTestMaxLifeTime($this->getCacheItemPool($this->getNamespace(), false, null, true));
-        $this->doTestMaxLifeTime($this->getCacheItemPool($this->getNamespace(), false, null, false));
-        $this->doTestMaxLifeTime($this->getCacheItemPool($this->getNamespace(), true, null, true));
-        $this->doTestMaxLifeTime($this->getCacheItemPool($this->getNamespace(), true, null, false));
     }
 }

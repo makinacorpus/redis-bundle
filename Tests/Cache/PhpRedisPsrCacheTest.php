@@ -22,7 +22,7 @@ class PhpRedisPsrCacheTest extends AbstractPsrCacheTest
     /**
      * {@inheritdoc}
      */
-    protected function buildCacheItemPool($namespace, $beParanoid = false, $maxLifetime = null, $canPipeline = true)
+    protected function buildCacheItemPool($beParanoid = false, $maxLifetime = null)
     {
         $manager = new StandaloneManager(
             new PhpRedisFactory(),
@@ -31,12 +31,31 @@ class PhpRedisPsrCacheTest extends AbstractPsrCacheTest
 
         return new PhpRedisCacheItemPool(
             $manager->getClient(),
-            $namespace,
+            $this->buildNamespace(),
             false,
             'prefix-' . uniqid(),
             $beParanoid,
-            $maxLifetime,
-            $canPipeline
+            $maxLifetime
         );
+    }
+
+    public function testGetSetNormal()
+    {
+        $this->doTestGetSet($this->buildCacheItemPool(false));
+    }
+
+    public function testGetSetParanoid()
+    {
+        $this->doTestGetSet($this->buildCacheItemPool(true));
+    }
+
+    public function testFlushNormal()
+    {
+        $this->doTestFlush($this->buildCacheItemPool(false));
+    }
+
+    public function testFlushParanoid()
+    {
+        $this->doTestFlush($this->buildCacheItemPool(true));
     }
 }
