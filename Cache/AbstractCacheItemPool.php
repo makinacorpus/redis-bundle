@@ -145,24 +145,11 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
     abstract protected function isChecksumValid($reference, $checksum);
 
     /**
-     * Generate a new checksum
-     *
-     * This is the best place to set a transaction for incrementing the checksum,
-     * but we won't do it from here since it's dependent on the implementation
-     * capabilities. Please use the 
-     *
-     * @param string $id
-     *   Checksum identifier to regenerate
-     *
-     * @return string
-     *   The newly generated checksum
-     */
-    abstract protected function doRegenerateChecksum($id);
-
-    /**
      * Fetch given checksum
      *
      * @param string $id
+     * @param boolean $regenerate
+     *   Set this to true to augment the checksum serial (invalidates everything)
      *
      * @return string
      *   If no checksum is present on the Redis server, the implementation must
@@ -170,7 +157,7 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
      *   important keep a static checksum cache, and must remain stateless, this
      *   job is already done in the upper code layer.
      */
-    abstract protected function doFetchChecksum($id);
+    abstract protected function doFetchChecksum($id, $regenerate = false);
 
     /**
      * Fetch given checksum
@@ -238,6 +225,17 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
         }
 
         return $this->checksum[$id];
+    }
+
+    /**
+     * Generate a new checksum and set the object internals to match the new one
+     *
+     * @param string $id
+     *   Checksum identifier to regenerate
+     */
+    protected function regenerateChecksum($id)
+    {
+        $this->checksum[$id] = $this->doFetchChecksum($id, true);
     }
 
     /**
@@ -343,17 +341,6 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
         }
 
         return $ret;
-    }
-
-    /**
-     * Generate a new checksum and set the object internals to match the new one
-     *
-     * @param string $id
-     *   Checksum identifier to regenerate
-     */
-    protected function regenerateChecksum($id)
-    {
-        $this->checksum[$id] = $this->doRegenerateChecksum($id);
     }
 
     /**

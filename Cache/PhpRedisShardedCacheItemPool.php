@@ -23,40 +23,18 @@ class PhpRedisShardedCacheItemPool extends PhpRedisCacheItemPool
     /**
      * {@inheritdoc}
      */
-    protected function doRegenerateChecksum($id)
-    {
-        $checksum = null;
-        $client   = $this->getClient();
-        $key      = $this->getKey(['c', $id]);
-
-        $checksum = $client->get($key);
-
-        if (!$checksum || !is_scalar($checksum)) {
-            $checksum = $this->getNextChecksum();
-        } else {
-            $checksum = $this->getNextChecksum($checksum);
-        }
-
-        $client->set($key, $checksum);
-
-        return $checksum;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function doFetchChecksum($id)
+    protected function doFetchChecksum($id, $regenerate = false)
     {
         $checksum = null;
         $client   = $this->getClient();
         $key      = $this->getKey(['c', $id]);
         $checksum = $client->get($key);
 
-        if ($checksum && is_scalar($checksum)) {
+        if ($checksum && !$regenerate) {
             return $checksum;
         }
 
-        $checksum = $this->getNextChecksum();
+        $checksum = $this->getNextChecksum($checksum);
         $client->set($key, $checksum);
 
         return $checksum;

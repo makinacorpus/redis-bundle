@@ -108,7 +108,7 @@ class PhpRedisCacheItemPool extends AbstractCacheItemPool
     /**
      * {@inheritdoc}
      */
-    protected function doRegenerateChecksum($id)
+    protected function doFetchChecksum($id, $regenerate = false)
     {
         $checksum = null;
         $retries  = 5;
@@ -120,54 +120,14 @@ class PhpRedisCacheItemPool extends AbstractCacheItemPool
             $client->watch($key);
             $checksum = $client->get($key);
 
-            if (!$checksum || !is_scalar($checksum)) {
-                $checksum = $this->getNextChecksum();
-            } else {
-                $checksum = $this->getNextChecksum($checksum);
+            if ($checksum && !$regenerate) {
+                $client->discard();
+
+                return $checksum;
             }
 
-            $status = $client->multi(\Redis::MULTI)->set($key, $checksum)->exec();
-
-            if ($status) {
-                break;
-            } else {
-                $checksum = null;
-            }
-        }
-
-        if (!$checksum) {
-            throw new \RuntimeException(
-                sprintf(
-                    "Could not generate checksum with id '%s', race condition happened",
-                    $id
-                )
-            );
-        }
-
-        return $checksum;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function doFetchChecksum($id)
-    {
-        $checksum = null;
-        $retries  = 5;
-        $client   = $this->getClient();
-        $key      = $this->getKey(['c', $id]);
-
-        for ($i = 0; $i < $retries; ++$i) {
-
-            $client->watch($key);
-            $checksum = $client->get($key);
-
-            if ($checksum && is_scalar($checksum)) {
-                break;
-            }
-
-            $checksum = $this->getNextChecksum();
-            $status = $client->multi(\Redis::MULTI)->set($key, $checksum)->exec();
+            $checksum = $this->getNextChecksum($checksum);
+            $status   = $client->multi(\Redis::MULTI)->set($key, $checksum)->exec();
 
             if ($status) {
                 break;
