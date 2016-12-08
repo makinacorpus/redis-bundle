@@ -116,11 +116,7 @@ class Dsn
      */
     public function formatPhpRedis()
     {
-        if ($this->isUnixSocket()) {
-            return $this->host;
-        } else {
-            return $this->host . ':' . $this->port;
-        }
+        return $this->host;
     }
 
     /**

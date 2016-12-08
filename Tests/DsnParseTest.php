@@ -13,7 +13,7 @@ class DsnParseTest extends \PHPUnit_Framework_TestCase
         $this->assertFalse($dsn->isUnixSocket());
         $this->assertSame('tcp://localhost:1234/12', $dsn->formatFull());
         $this->assertSame('tcp://localhost:1234', $dsn->formatWithoutDatabase());
-        $this->assertSame('localhost:1234', $dsn->formatPhpRedis());
+        $this->assertSame('localhost', $dsn->formatPhpRedis());
 
         $dsn = new Dsn('tcp://localhost:1234');
         $dsn = new Dsn('tcp://localhost');
@@ -26,14 +26,14 @@ class DsnParseTest extends \PHPUnit_Framework_TestCase
         $this->assertFalse($dsn->isUnixSocket());
         $this->assertSame('tcp://1.2.3.4:6379/0', $dsn->formatFull());
         $this->assertSame('tcp://1.2.3.4:6379', $dsn->formatWithoutDatabase());
-        $this->assertSame('1.2.3.4:6379', $dsn->formatPhpRedis());
+        $this->assertSame('1.2.3.4', $dsn->formatPhpRedis());
 
 
         $dsn = new Dsn();
         $this->assertFalse($dsn->isUnixSocket());
         $this->assertSame('tcp://127.0.0.1:6379/0', $dsn->formatFull());
         $this->assertSame('tcp://127.0.0.1:6379', $dsn->formatWithoutDatabase());
-        $this->assertSame('127.0.0.1:6379', $dsn->formatPhpRedis());
+        $this->assertSame('127.0.0.1', $dsn->formatPhpRedis());
 
         $dsn = new Dsn('unix:///var/run/redis.sock');
         $this->assertTrue($dsn->isUnixSocket());
