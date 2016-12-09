@@ -6,20 +6,13 @@ use MakinaCorpus\RedisBundle\Cache\CacheBackend;
 use MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface;
 use MakinaCorpus\RedisBundle\Cache\Impl\PhpRedisCacheImpl;
 use MakinaCorpus\RedisBundle\Cache\Impl\PredisCacheImpl;
-use MakinaCorpus\RedisBundle\Client\PhpRedisFactory;
 use MakinaCorpus\RedisBundle\Client\StandaloneFactoryInterface;
-use MakinaCorpus\RedisBundle\Client\StandaloneManager;
 
 /**
  * Bugfixes made over time test class.
  */
-abstract class AbstractCacheTest extends \PHPUnit_Framework_TestCase
+abstract class AbstractCacheTest extends AbstractClientTest
 {
-    /**
-     * @var Cache bin identifier
-     */
-    static private $id = 1;
-
     /**
      * Get cache options overrides
      *
@@ -47,16 +40,6 @@ abstract class AbstractCacheTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * Get client factory
-     *
-     * @return StandaloneFactoryInterface
-     */
-    protected function getClientFactory()
-    {
-        return new PhpRedisFactory();
-    }
-
-    /**
      * Create cache implementation
      *
      * @param StandaloneFactoryInterface $factory
@@ -65,44 +48,18 @@ abstract class AbstractCacheTest extends \PHPUnit_Framework_TestCase
      */
     protected function createCacheImpl(StandaloneFactoryInterface $factory, $namespace)
     {
-        $manager = new StandaloneManager($factory, [
-            'default' => ['host' => getenv('REDIS_DSN_NORMAL')]
-        ]);
+        $manager = $this->getClientManager();
 
         switch ($factory->getName()) {
 
             case 'PhpRedis':
-                return new PhpRedisCacheImpl($manager->getClient(), $namespace, 'test', true);
+                return new PhpRedisCacheImpl($manager->getClient(), $namespace, true, null);
 
             case 'Predis':
-                return new PredisCacheImpl($manager->getClient(), $namespace, 'test', true);
+                return new PredisCacheImpl($manager->getClient(), $namespace, true, null);
         }
 
         throw new \Exception(sprintf("Unsupported cache implementation for client factory '%s'", $factory->getName()));
-    }
-
-    /**
-     * Get namespace for non-conflict between tests
-     *
-     * @param string $namespace
-     * @param array $options
-     *
-     * @return string
-     */
-    final protected function getNamespace($namespace = null, array $options = null)
-    {
-        if (null === $namespace) {
-            // This is needed to avoid conflict between tests, each test
-            // seems to use the same Redis namespace and conflicts are
-            // possible.
-            if (null === $options) {
-                $namespace = 'cache-fixes-' . (self::$id++);
-            } else {
-                $namespace = 'cache-fixes-' . (self::$id);
-            }
-        }
-
-        return $namespace;
     }
 
     protected function alterOptions(CacheBackend $backend, array $options)
@@ -132,7 +89,7 @@ abstract class AbstractCacheTest extends \PHPUnit_Framework_TestCase
      */
     protected function getBackend($namespace = null, array $options = null)
     {
-        $namespace  = $this->getNamespace($namespace, $options);
+        $namespace  = $this->computeClientNamespace($namespace, $options);
         $factory    = $this->getClientFactory();
         $options    = $this->getCacheOptions();
         $impl       = $this->createCacheImpl($factory, $namespace);

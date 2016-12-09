@@ -23,7 +23,7 @@ abstract class FlushUnitTest extends AbstractCacheTest
      */
     protected function getBackend($namespace = null, array $options = null)
     {
-        $namespace = $this->getNamespace($namespace, $options);
+        $namespace = $this->computeClientNamespace($namespace, $options);
 
         return (new RedisCacheBackend($namespace))->getNestedCacheBackend();
     }

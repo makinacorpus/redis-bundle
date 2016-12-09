@@ -2,8 +2,12 @@
 
 namespace MakinaCorpus\RedisBundle\Cache\Impl;
 
+use MakinaCorpus\RedisBundle\RedisAwareTrait;
+
 class PredisCacheImpl extends AbstractCacheImpl
 {
+    use RedisAwareTrait;
+
     /**
      * {@inheritdoc}
      */

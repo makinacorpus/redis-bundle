@@ -2,15 +2,13 @@
 
 namespace MakinaCorpus\RedisBundle\Cache\Impl;
 
-use MakinaCorpus\RedisBundle\AbstractRedisAware;
-
 /**
  * @todo
  *   - Improve lua scripts by using SCAN family commands
  *   - Deambiguate why we need the namespace only for flush*() operations
  *   - Implement the isEmpty() method by using SCAN or KEYS
  */
-abstract class AbstractCacheImpl extends AbstractRedisAware implements CacheImplInterface
+abstract class AbstractCacheImpl implements CacheImplInterface
 {
     /**
      * Lastest cache flush KEY name
