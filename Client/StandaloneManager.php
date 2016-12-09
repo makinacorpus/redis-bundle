@@ -83,10 +83,22 @@ class StandaloneManager
      * Get factory
      *
      * @return StandaloneFactoryInterface
+     *
+     * @deprecated
      */
     public function getFactory()
     {
         return $this->factory;
+    }
+
+    /**
+     * Get factory name
+     *
+     * @return string
+     */
+    public function getFactoryName()
+    {
+        return $this->factory->getName();
     }
 
     /**

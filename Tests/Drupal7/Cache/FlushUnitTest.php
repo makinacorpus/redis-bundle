@@ -2,15 +2,11 @@
 
 namespace MakinaCorpus\RedisBundle\Tests\Drupal7\Cache;
 
-use MakinaCorpus\RedisBundle\Drupal7\Cache\CacheBackend;
+use MakinaCorpus\RedisBundle\Drupal7\RedisCacheBackend;
+use MakinaCorpus\RedisBundle\Tests\AbstractCacheTest;
 
-abstract class FlushUnitTest extends \PHPUnit_Framework_TestCase
+abstract class FlushUnitTest extends AbstractCacheTest
 {
-    /**
-     * @var Cache bin identifier
-     */
-    static private $id = 1;
-
     protected function setUp()
     {
         if (!class_exists('\DrupalCacheInterface')) {
@@ -20,36 +16,16 @@ abstract class FlushUnitTest extends \PHPUnit_Framework_TestCase
         $GLOBALS['conf'] = [];
     }
 
-    protected function createCacheInstance($name = null)
-    {
-        return new CacheBackend($name);
-    }
-
     /**
-     * Get cache backend
+     * Drupal 7 goes with variables
      *
-     * @return CacheBackend
+     * {@inheritdoc}
      */
-    final protected function getBackend($name = null, $reset = true)
+    protected function getBackend($namespace = null, array $options = null)
     {
-        if (null === $name) {
-            // This is needed to avoid conflict between tests, each test
-            // seems to use the same Redis namespace and conflicts are
-            // possible.
-            if ($reset) {
-                $name = 'cache-flush-' . (self::$id++);
-            } else {
-                $name = 'cache-flush-' . (self::$id);
-            }
-        }
+        $namespace = $this->getNamespace($namespace, $options);
 
-        $backend = $this->createCacheInstance($name);
-
-//         $this->assertTrue("Redis client is " . ($backend->isSharded() ? '' : "NOT ") . " sharded");
-//         $this->assertTrue("Redis client is " . ($backend->allowTemporaryFlush() ? '' : "NOT ") . " allowed to flush temporary entries");
-//         $this->assertTrue("Redis client is " . ($backend->allowPipeline() ? '' : "NOT ") . " allowed to use pipeline");
-
-        return $backend;
+        return (new RedisCacheBackend($namespace))->getNestedCacheBackend();
     }
 
     /**
@@ -58,7 +34,7 @@ abstract class FlushUnitTest extends \PHPUnit_Framework_TestCase
      */
     public function testFlushIsTemporaryWithLifetime()
     {
-        $GLOBALS['conf']['cache_lifetime'] = 112;
+        variable_set('cache_lifetime', 112);
 
         $backend = $this->getBackend();
 
@@ -91,7 +67,7 @@ abstract class FlushUnitTest extends \PHPUnit_Framework_TestCase
      */
     public function testFlushIsTemporaryWithoutLifetime()
     {
-        $GLOBALS['conf']['cache_lifetime'] = 0;
+        variable_set('cache_lifetime', 0);
 
         $backend = $this->getBackend();
 

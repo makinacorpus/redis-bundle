@@ -7,6 +7,9 @@ namespace MakinaCorpus\RedisBundle\Client;
  */
 class PhpRedisFactory implements StandaloneFactoryInterface
 {
+    /**
+     * {@inheritdoc}
+     */
     public function createClient($options = [])
     {
         if ($options['cluster']) {
@@ -67,5 +70,13 @@ class PhpRedisFactory implements StandaloneFactoryInterface
         $client->setOption(\Redis::OPT_SERIALIZER, \Redis::SERIALIZER_NONE);
 
         return $client;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getName()
+    {
+        return 'PhpRedis';
     }
 }

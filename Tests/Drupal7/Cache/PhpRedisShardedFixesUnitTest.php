@@ -2,14 +2,22 @@
 
 namespace MakinaCorpus\RedisBundle\Tests\Drupal7\Cache;
 
-use MakinaCorpus\RedisBundle\Drupal7\Cache\CacheBackend;
+use MakinaCorpus\RedisBundle\Cache\CacheBackend;
 
 class PhpRedisShardedFixesUnitTest extends FixesUnitTest
 {
-    protected function getClientInterface()
+    protected function setUp()
     {
-        $GLOBALS['conf']['redis_flush_mode'] = CacheBackend::FLUSH_SHARD;
+        parent::setUp();
 
-        return 'PhpRedis';
+        $GLOBALS['conf']['redis_client_interface'] = 'PhpRedis';
+        $GLOBALS['conf']['redis_flush_mode'] = CacheBackend::FLUSH_SHARD;
+    }
+
+    public function testOptionsPropagation()
+    {
+        $options = $this->getBackend()->getOptions();
+
+        $this->assertSame(CacheBackend::FLUSH_SHARD, $options['flush_mode']);
     }
 }

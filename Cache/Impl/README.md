@@ -1,0 +1,1 @@
+This folder contains the base implementation of all cache backends.

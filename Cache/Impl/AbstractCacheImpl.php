@@ -1,8 +1,8 @@
 <?php
 
-namespace MakinaCorpus\RedisBundle\Drupal7\Cache;
+namespace MakinaCorpus\RedisBundle\Cache\Impl;
 
-use MakinaCorpus\RedisBundle\RedisAwareTrait;
+use MakinaCorpus\RedisBundle\AbstractRedisAware;
 
 /**
  * @todo
@@ -10,10 +10,8 @@ use MakinaCorpus\RedisBundle\RedisAwareTrait;
  *   - Deambiguate why we need the namespace only for flush*() operations
  *   - Implement the isEmpty() method by using SCAN or KEYS
  */
-abstract class AbstractCacheImpl implements RedisCacheImplInterface
+abstract class AbstractCacheImpl extends AbstractRedisAware implements CacheImplInterface
 {
-    use RedisAwareTrait;
-
     /**
      * Lastest cache flush KEY name
      */

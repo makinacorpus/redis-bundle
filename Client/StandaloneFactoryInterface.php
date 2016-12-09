@@ -31,4 +31,11 @@ interface StandaloneFactoryInterface
      *   Real client depends from the library behind.
      */
     public function createClient($options = []);
+
+    /**
+     * Get factory name
+     *
+     * @return string
+     */
+    public function getName();
 }

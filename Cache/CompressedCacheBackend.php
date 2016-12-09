@@ -1,6 +1,6 @@
 <?php
 
-namespace MakinaCorpus\RedisBundle\Drupal7\Cache;
+namespace MakinaCorpus\RedisBundle\Cache;
 
 /**
  * This typically brings 80..85% compression in ~20ms/mb write, 5ms/mb read.
@@ -51,18 +51,29 @@ class CompressedCacheBackend extends CacheBackend
     /**
      * {@inheritdoc}
      */
-    protected function expandEntry(array $values, $flushPerm, $flushVolatile)
+    protected function expandEntry(array $values, $flushPerm, $flushVolatile, $allowInvalid = false)
     {
-        if (!empty($values['data']) && !empty($values['compressed'])) {
+        $entry = parent::expandEntry($values, $flushPerm, $flushVolatile, $allowInvalid);
+
+        if (false === $entry) {
+            return false;
+        }
+
+        // Uncompress data AFTER the entry has been correctly expanded, this
+        // way we ensure that faster operations such as checksum verification
+        // is done before and incorrect entries don't uselessly get
+        // uncompressed.
+        if (!empty($entry->data) && isset($entry->compressed) && $entry->compressed) {
+
             // Uncompress, suppress warnings e.g. for broken CRC32.
-            $values['data'] = @gzuncompress($values['data']);
+            $entry->data = @gzuncompress($entry->data);
 
             // In such cases, void the cache entry.
-            if ($values['data'] === false) {
+            if ($entry->data === false) {
                 return false;
             }
         }
 
-        return parent::expandEntry($values, $flushPerm, $flushVolatile);
+        return $entry;
     }
 }

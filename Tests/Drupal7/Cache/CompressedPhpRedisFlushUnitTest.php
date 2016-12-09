@@ -2,17 +2,25 @@
 
 namespace MakinaCorpus\RedisBundle\Tests\Drupal7\Cache;
 
-use MakinaCorpus\RedisBundle\Drupal7\Cache\CompressedCacheBackend;
+use MakinaCorpus\RedisBundle\Cache\CacheBackend;
 
 class CompressedPhpRedisFlushUnitTest extends FlushUnitTest
 {
-    protected function createCacheInstance($name = null)
+    protected function setUp()
     {
-        return new CompressedCacheBackend($name);
+        parent::setUp();
+
+        $GLOBALS['conf']['redis_client_interface'] = 'PhpRedis';
+        $GLOBALS['conf']['redis_compression'] = true;
+        $GLOBALS['conf']['redis_compression_threshold'] = 3;
     }
 
-    protected function getClientInterface()
+    public function testOptionsPropagation()
     {
-        return 'PhpRedis';
+        $options = $this->getBackend()->getOptions();
+
+        $this->assertTrue($options['compression']);
+        $this->assertSame(3, $options['compression_threshold']);
+        $this->assertSame(CacheBackend::FLUSH_NORMAL, $options['flush_mode']);
     }
 }

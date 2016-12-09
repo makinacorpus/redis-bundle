@@ -1,15 +1,15 @@
 <?php
 
-namespace MakinaCorpus\RedisBundle\Drupal7\Cache;
+namespace MakinaCorpus\RedisBundle\Cache\Impl;
 
 use MakinaCorpus\RedisBundle\RedisAwareInterface;
 
 /**
- * Real cache backend primitives. This functions will be used by the
- * Redis_Cache wrapper class that implements the high-level logic that
- * allows us to be Drupal compatible.
+ * Real cache backend primitives, it aims to provide a framework-agnostic yet
+ * complete cache implementation, to be profixied for various existing backends
+ * such as Drupal, Doctrine, Psr and Symfony.
  */
-interface RedisCacheImplInterface extends RedisAwareInterface
+interface CacheImplInterface extends RedisAwareInterface
 {
     /**
      * Set last flush time
@@ -79,6 +79,29 @@ interface RedisCacheImplInterface extends RedisAwareInterface
      * @param string $prefix
      */
     public function deleteByPrefix($prefix);
+
+    /**
+     * Mark a single item as being invalid
+     *
+     * This method should add the 'invalid' property on the hash if exists
+     *
+     * @param string $id
+     */
+    public function invalidate($id);
+
+    /**
+     * Mark a set of items as being invalid
+     *
+     * This method should add the 'invalid' property on the hashes if exists
+     *
+     * @param string[] $idList
+     */
+    public function invalidateMultiple(array $idList);
+
+    /**
+     * Marks all cache items as being invalid
+     */
+    public function invalidateAll();
 
     /**
      * Flush all entries

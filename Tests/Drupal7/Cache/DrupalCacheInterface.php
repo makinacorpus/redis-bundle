@@ -5,22 +5,29 @@
 
 global $conf;
 
-define('CACHE_PERMANENT', 0);
-define('CACHE_TEMPORARY', -1);
+if (!defined('REQUEST_TIME')) {
+    define('REQUEST_TIME', time());
+}
+if (!defined('CACHE_PERMANENT')) {
+    define('CACHE_PERMANENT', 0);
+}
+if (!defined('CACHE_TEMPORARY')) {
+    define('CACHE_TEMPORARY', -1);
+}
 
 function variable_del($name) {
-  global $conf;
-  unset($conf[$name]);
+    global $conf;
+    unset($conf[$name]);
 }
 
 function variable_get($name, $default = null) {
-  global $conf;
-  return array_key_exists($name, $conf) ? $conf[$name] : $default;
+    global $conf;
+    return array_key_exists($name, $conf) ? $conf[$name] : $default;
 }
 
 function variable_set($name, $value) {
-  global $conf;
-  return $conf[$name] = $value;
+    global $conf;
+    return $conf[$name] = $value;
 }
 
 class Database

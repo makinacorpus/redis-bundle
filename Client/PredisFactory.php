@@ -7,6 +7,9 @@ namespace MakinaCorpus\RedisBundle\Client;
  */
 class PredisFactory implements StandaloneFactoryInterface
 {
+    /**
+     * {@inheritdoc}
+     */
     public function createClient($options = [])
     {
         if ($options['cluster']) {
@@ -72,5 +75,13 @@ class PredisFactory implements StandaloneFactoryInterface
         }
 
         return $client;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getName()
+    {
+        return 'Predis';
     }
 }

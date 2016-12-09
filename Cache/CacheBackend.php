@@ -1,9 +1,11 @@
 <?php
 
-namespace MakinaCorpus\RedisBundle\Drupal7\Cache;
+namespace MakinaCorpus\RedisBundle\Cache;
 
+use MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface;
 use MakinaCorpus\RedisBundle\ChecksumTrait;
 use MakinaCorpus\RedisBundle\Drupal7\ClientFactory;
+use MakinaCorpus\RedisBundle\RedisAwareInterface;
 
 /**
  * Because those objects will be spawned during boostrap all its configuration
@@ -13,9 +15,21 @@ use MakinaCorpus\RedisBundle\Drupal7\ClientFactory;
  * classes as they may differ in how the API handles transaction, pipelining
  * and return values.
  */
-class CacheBackend implements \DrupalCacheInterface
+class CacheBackend
 {
     use ChecksumTrait;
+
+    /**
+     * Cache item has no expiry time and should be kept indefinitly; only
+     * manual clear calls or LRU evicition will erase it.
+     */
+    const ITEM_IS_PERMANENT = 0;
+
+    /**
+     * Cache item is temporary, its expiry time is computed from this backend
+     * configuration, and item might be loaded as invalid if asked for.
+     */
+    const ITEM_IS_VOLATILE = -1;
 
     /**
      * Default lifetime for permanent items.
@@ -60,14 +74,16 @@ class CacheBackend implements \DrupalCacheInterface
     const KEY_THRESHOLD = 20;
 
     /**
-     * @var RedisCacheImplInterface
+     * @var CacheImplInterface
      */
     private $backend;
 
     /**
-     * @var string
+     * Original options passed at the constructor
+     *
+     * @var mixed[]
      */
-    private $bin;
+    private $options = [];
 
     /**
      * When the global 'cache_lifetime' Drupal variable is set to a value, the
@@ -96,7 +112,7 @@ class CacheBackend implements \DrupalCacheInterface
     private $allowPipeline = false;
 
     /**
-     * Default TTL for CACHE_PERMANENT items.
+     * Default TTL for self::ITEM_IS_PERMANENT items.
      *
      * See "Default lifetime for permanent items" section of README.txt
      * file for a comprehensive explaination of why this exists.
@@ -152,7 +168,7 @@ class CacheBackend implements \DrupalCacheInterface
     }
 
     /**
-     * Get TTL for CACHE_PERMANENT items.
+     * Get TTL for self::ITEM_IS_PERMANENT items.
      *
      * @return int
      *   Lifetime in seconds.
@@ -174,14 +190,35 @@ class CacheBackend implements \DrupalCacheInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Default constructor
+     *
+     * @param CacheImplInterface $backend
+     *   Implementation to use
+     * @param mixed[] $options
+     *   Beahavioural options for this cache, leave empty for default
      */
-    public function __construct($bin)
+    public function __construct(CacheImplInterface $backend, array $options = [])
     {
-        $this->bin = $bin;
+        $this->backend = $backend;
 
-        $className = ClientFactory::getClass(ClientFactory::REDIS_IMPL_CACHE);
-        $this->backend = new $className(ClientFactory::getManager()->getClient(), $bin, ClientFactory::getDefaultPrefix($bin));
+        $this->setOptions($options);
+    }
+
+    /**
+     * Change current options at runtime
+     *
+     * @param mixed[] $options
+     *   Beahavioural options for this cache, leave empty for default
+     */
+    public function setOptions(array $options)
+    {
+        $this->options = $options + [
+            'cache_lifetime'        => self::ITEM_IS_PERMANENT,
+            'flush_mode'            => self::FLUSH_NORMAL,
+            'perm_ttl'              => self::LIFETIME_PERM_DEFAULT,
+            'compression'           => false,
+            'compression_threshold' => 100,
+        ];
 
         $this->refreshCapabilities();
         $this->refreshPermTtl();
@@ -189,22 +226,28 @@ class CacheBackend implements \DrupalCacheInterface
     }
 
     /**
+     * Get current options
+     *
+     * @param mixed[] $options
+     */
+    public function getOptions()
+    {
+        return $this->options;
+    }
+
+    /**
      * Find from Drupal variables the clear mode.
      */
     public function refreshCapabilities()
     {
-        if (0 < variable_get('cache_lifetime', 0)) {
+        if (0 < $this->options['cache_lifetime']) {
             // Per Drupal default behavior, when the 'cache_lifetime' variable
             // is set we must not flush any temporary items since they have a
             // life time.
             $this->allowTemporaryFlush = false;
         }
 
-        if (null !== ($mode = variable_get('redis_flush_mode', null))) {
-            $mode = (int)$mode;
-        } else {
-            $mode = self::FLUSH_NORMAL;
-        }
+        $mode = (int)$this->options['flush_mode'];
 
         $this->isSharded = self::FLUSH_SHARD === $mode || self::FLUSH_SHARD_WITH_PIPELINING === $mode;
         $this->allowPipeline = self::FLUSH_SHARD !== $mode;
@@ -213,14 +256,10 @@ class CacheBackend implements \DrupalCacheInterface
     /**
      * Find from Drupal variables the right permanent items TTL.
      */
-    private function refreshPermTtl()
+    public function refreshPermTtl()
     {
-        $ttl = null;
-        if (null === ($ttl = variable_get('redis_perm_ttl_' . $this->bin, null))) {
-            if (null === ($ttl = variable_get('redis_perm_ttl', null))) {
-                $ttl = self::LIFETIME_PERM_DEFAULT;
-            }
-        }
+        $ttl = $this->options['perm_ttl'];
+
         if ($ttl === (int)$ttl) {
             $this->permTtl = $ttl;
         } else {
@@ -242,7 +281,7 @@ class CacheBackend implements \DrupalCacheInterface
     {
         // And now cache lifetime. Be aware we exclude negative values
         // considering those are Drupal misconfiguration.
-        $maxTtl = variable_get('cache_lifetime', 0);
+        $maxTtl = (int)$this->options['cache_lifetime'];
         if (0 < $maxTtl) {
             if ($maxTtl < $this->permTtl) {
                 $this->maxTtl = $maxTtl;
@@ -267,12 +306,12 @@ class CacheBackend implements \DrupalCacheInterface
         list($flushPerm, $flushVolatile) = $this->backend->getLastFlushTime();
 
         $checksum = $this->getValidChecksum(
-            max(array(
+            max([
                 $flushPerm,
                 $flushVolatile,
                 $permanent,
                 time(),
-            ))
+            ])
         );
 
         if ($permanent) {
@@ -315,26 +354,30 @@ class CacheBackend implements \DrupalCacheInterface
      *
      * @param string $cid
      * @param mixed $data
+     * @param int $expire
+     * @param string[] $tags
      *
      * @return array
      */
-    protected function createEntryHash($cid, $data, $expire = CACHE_PERMANENT)
+    protected function createEntryHash($cid, $data, $expire = self::ITEM_IS_PERMANENT, array $tags = [])
     {
         list($flushPerm, $flushVolatile) = $this->getLastFlushTime();
 
-        if (CACHE_TEMPORARY === $expire) {
-            $validityThreshold = max(array($flushVolatile, $flushPerm));
+        if (self::ITEM_IS_VOLATILE === $expire) {
+            $validityThreshold = max([$flushVolatile, $flushPerm]);
         } else {
             $validityThreshold = $flushPerm;
         }
 
         $time = $this->getValidChecksum($validityThreshold);
 
-        $hash = array(
+        $hash = [
             'cid'     => $cid,
+            'tags'    => implode(',', $tags),
             'created' => $time,
             'expire'  => $expire,
-        );
+            'valid'   => 1,
+        ];
 
         // Let Redis handle the data types itself.
         if (!is_string($data)) {
@@ -355,9 +398,9 @@ class CacheBackend implements \DrupalCacheInterface
      *   Raw values fetched from Redis server data
      *
      * @return array
-     *   Or FALSE if entry is invalid
+     *   Or false if entry is invalid
      */
-    protected function expandEntry(array $values, $flushPerm, $flushVolatile)
+    protected function expandEntry(array $values, $flushPerm, $flushVolatile, $allowInvalid = false)
     {
         // Check for entry being valid.
         if (empty($values['cid'])) {
@@ -369,14 +412,14 @@ class CacheBackend implements \DrupalCacheInterface
         if (isset($values['expire'])) {
             $expire = (int)$values['expire'];
             // Ensure the entry is valid and have not expired.
-            if ($expire !== CACHE_PERMANENT && $expire !== CACHE_TEMPORARY && $expire <= time()) {
+            if ($expire !== self::ITEM_IS_PERMANENT && $expire !== self::ITEM_IS_VOLATILE && $expire <= time()) {
                 return false;
             }
         }
 
         // Ensure the entry does not predate the last flush time.
         if ($this->allowTemporaryFlush && !empty($values['volatile'])) {
-            $validityThreshold = max(array($flushPerm, $flushVolatile));
+            $validityThreshold = max([$flushPerm, $flushVolatile]);
         } else {
             $validityThreshold = $flushPerm;
         }
@@ -394,14 +437,36 @@ class CacheBackend implements \DrupalCacheInterface
             $entry->data = unserialize($entry->data);
         }
 
+        if (empty($entry->tags)) {
+            $entry->tags = [];
+        } else{
+            $entry->tags = explode(',', $entry->tags);
+        }
+
         return $entry;
     }
 
     /**
-     * {@inheritdoc}
+     * Get a single item
+     *
+     * @param string $cid
+     * @param boolean $allowInvalid
+     *   Allow invalidated items to be fetched, this means that items beyond
+     *   their expiry time can be fetched for performance reasons
+     *
+     * @return \stdClass
+     *   An object containing additional information about the item state,
+     *   and the 'data' property containig the cached data
      */
-    public function get($cid)
+    public function get($cid, $allowInvalid = false)
     {
+        // If the current cache backend allows temporary flush globally this
+        // means there is no default temporary item cache life time configured
+        // case in which we should not allow temporary items to be fetched.
+        if (null === $allowInvalid) {
+            $allowInvalid = !$this->allowTemporaryFlush();
+        }
+
         $values = $this->backend->get($cid);
 
         if (empty($values)) {
@@ -410,7 +475,7 @@ class CacheBackend implements \DrupalCacheInterface
 
         list($flushPerm, $flushVolatile) = $this->getLastFlushTime();
 
-        $entry = $this->expandEntry($values, $flushPerm, $flushVolatile);
+        $entry = $this->expandEntry($values, $flushPerm, $flushVolatile, $allowInvalid);
 
         if (!$entry) { // This entry exists but is invalid.
             $this->backend->delete($cid);
@@ -421,10 +486,28 @@ class CacheBackend implements \DrupalCacheInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Get a single item
+     *
+     * @param string[] $cids
+     *   List of cache identifiers to load, valid loaded items keys will be
+     *   unset() from this array
+     * @param boolean $allowInvalid
+     *   Allow invalidated items to be fetched, this means that items beyond
+     *   their expiry time can be fetched for performance reasons
+     *
+     * @return \stdClass[]
+     *   An set of objects each containing additional information about the
+     *   item state, and the 'data' property containig the cached data
      */
-    public function getMultiple(&$cids)
+    public function getMultiple(&$cids, $allowInvalid = false)
     {
+        // If the current cache backend allows temporary flush globally this
+        // means there is no default temporary item cache life time configured
+        // case in which we should not allow temporary items to be fetched.
+        if (null === $allowInvalid) {
+            $allowInvalid = !$this->allowTemporaryFlush();
+        }
+
         $ret    = array();
         $delete = array();
 
@@ -471,18 +554,18 @@ class CacheBackend implements \DrupalCacheInterface
     /**
      * {@inheritdoc}
      */
-    public function set($cid, $data, $expire = CACHE_PERMANENT)
+    public function set($cid, $data, $expire = self::ITEM_IS_PERMANENT, array $tags = [])
     {
         $hash   = $this->createEntryHash($cid, $data, $expire);
         $maxTtl = $this->getMaxTtl();
 
         switch ($expire) {
 
-            case CACHE_PERMANENT:
+            case self::ITEM_IS_PERMANENT:
                 $this->backend->set($cid, $hash, $maxTtl, false);
                 break;
 
-            case CACHE_TEMPORARY:
+            case self::ITEM_IS_VOLATILE:
                 $this->backend->set($cid, $hash, $maxTtl, true);
                 break;
 
@@ -505,13 +588,144 @@ class CacheBackend implements \DrupalCacheInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Set multiple items at once
+     *
+     * @param mixed $items
+     *   Keys are the cache identifiers, values can be either:
+     *     - any raw value that is not an array or does not contain the 'data'
+     *       key, case in which it will be stored as-is
+     *     - an array with the 'data', 'expire' and 'tags' keys which maps to
+     *       the set() method.
+     */
+    public function setMultiple(array $items)
+    {
+        // @todo Base implementation, sufficient for now
+        foreach ($items as $cid => $item) {
+
+            if (!is_array($item) || !isset($item['data'])) {
+                $item = ['data' => $item];
+            }
+
+            $item += ['expire'  => self::ITEM_IS_PERMANENT, 'tags' => []];
+
+            $this->set($cid, $item['data'], $item['expire'], $items['tags']);
+        }
+    }
+
+    /**
+     * Deletes a single item from the cache
+     *
+     * @param string $cid
+     */
+    public function delete($cid)
+    {
+        return $this->backend->delete($cid);
+    }
+
+    /**
+     * Deletes multiple items from the cache
+     *
+     * @param array $cids
+     */
+    public function deleteMultiple(array $cids)
+    {
+        $this->backend->deleteMultiple($cids);
+    }
+
+    /**
+     * Alias of flush()
+     */
+    public function deleteAll()
+    {
+        $this->flush();
+    }
+
+    /**
+     * Delete items by prefix
+     *
+     * @param string $prefix
+     */
+    public function deleteByPrefix($prefix)
+    {
+        if ($this->isSharded) {
+            // @todo
+            //   This needs a map algorithm the same way the Drupal memcache
+            //   module implemented it for invalidity by prefixes. This is a
+            //   very stupid fallback which will delete everything
+            $this->setLastFlushTime(true);
+        } else {
+            $this->backend->deleteByPrefix($prefix);
+        }
+    }
+
+    /**
+     * Clear all items from this cache
+     */
+    public function flush()
+    {
+          if (!$this->isSharded) {
+              // Do not flush temporary items from this call, only invalidate
+              // them so thee caller can still load something, in case of heavy
+              // load
+              $this->setLastFlushTime(true);
+          } else {
+              // When the backend is allowed to use LUA EVAL command, we will
+              // remove everything from the cache, no matter there are invalid
+              // items that could be loaded or not
+              $this->backend->flush();
+        }
+    }
+
+    /**
+     * Mark a single item as being invalid
+     *
+     * A manually invalidated item can be loaded if explicitely asked for by
+     * passing the $allowInvalid parameter to the get() or getMultiple() method.
+     *
+     * @param string $cid
+     */
+    public function invalidate($cid)
+    {
+        $this->backend->invalidate($cid);
+    }
+
+    /**
+     * Mark a set of items as being invalid
+     *
+     * A manually invalidated item can be loaded if explicitely asked for by
+     * passing the $allowInvalid parameter to the get() or getMultiple() method.
+     *
+     * @param string[] $cids
+     */
+    public function invalidateMultiple(array $cids)
+    {
+        $this->backend->invalidateMultiple($cids);
+    }
+
+    /**
+     * Marks all cache items as being invalid
+     *
+     * A manually invalidated item can be loaded if explicitely asked for by
+     * passing the $allowInvalid parameter to the get() or getMultiple() method.
+     */
+    public function invalidateAll()
+    {
+        $this->backend->invalidateAll();
+    }
+
+    /**
+     * Please, do not use this method, it only reflects Drupal 7's API, it for
+     * convenience reasons kept here for now.
+     *
+     * @deprecated
+     * @internal
      */
     public function clear($cid = null, $wildcard = false)
     {
         if (null === $cid && !$wildcard) {
             // Drupal asked for volatile entries flush, this will happen
-            // during cron run, mostly
+            // during cron run, mostly for invalidating the 'page' and 'block'
+            // cache bins.
             $this->setLastFlushTime(false, true);
 
             if (!$this->isSharded && $this->allowTemporaryFlush) {
@@ -524,31 +738,28 @@ class CacheBackend implements \DrupalCacheInterface
             }
 
             if ('*' === $cid) {
-                // Use max() to ensure we invalidate both correctly
-                $this->setLastFlushTime(true);
-
-                if (!$this->isSharded) {
-                      $this->backend->flush();
-                }
+                $this->flush();
             } else {
-                if (!$this->isSharded) {
-                    $this->backend->deleteByPrefix($cid);
-                } else {
-                    // @todo This needs a map algorithm the same way memcache
-                    // module implemented it for invalidity by prefixes. This
-                    // is a very stupid fallback
-                    $this->setLastFlushTime(true);
-                }
+                $this->deleteByPrefix($cid);
             }
         } else if (is_array($cid)) {
-            $this->backend->deleteMultiple($cid);
+            $this->deleteMultiple($cid);
         } else {
-            $this->backend->delete($cid);
+            $this->delete($cid);
         }
     }
 
+    /**
+     * Is the backend empty
+     *
+     * Convenience method, but because we are working in a single namespace in
+     * Redis server, we cannot just ask if there's item for us, just return
+     * false and consider the backend NOT being empty
+     *
+     * @return boolean
+     */
     public function isEmpty()
     {
-       return false;
+        return false;
     }
 }

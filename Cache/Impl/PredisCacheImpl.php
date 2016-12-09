@@ -1,11 +1,8 @@
 <?php
 
-namespace MakinaCorpus\RedisBundle\Drupal7\Cache;
+namespace MakinaCorpus\RedisBundle\Cache\Impl;
 
-/**
- * Predis cache backend.
- */
-class PhpRedisCacheImpl extends AbstractCacheImpl
+class PredisCacheImpl extends AbstractCacheImpl
 {
     /**
      * {@inheritdoc}
@@ -35,18 +32,17 @@ class PhpRedisCacheImpl extends AbstractCacheImpl
         $values = $client->hmget($key, array("permanent", "volatile"));
 
         if (empty($values) || !is_array($values)) {
-            $ret = array(0, 0);
+            $values = array(0, 0);
         } else {
-            if (empty($values['permanent'])) {
-                $values['permanent'] = 0;
+            if (empty($values[0])) {
+                $values[0] = 0;
             }
-            if (empty($values['volatile'])) {
-                $values['volatile'] = 0;
+            if (empty($values[1])) {
+                $values[1] = 0;
             }
-            $ret = array($values['permanent'], $values['volatile']);
         }
 
-        return $ret;
+        return $values;
     }
 
     /**
@@ -73,17 +69,18 @@ class PhpRedisCacheImpl extends AbstractCacheImpl
      */
     public function getMultiple(array $idList)
     {
-        $client = $this->getClient();
-
         $ret = array();
 
-        $pipe = $client->multi(\Redis::PIPELINE);
+        $pipe = $this->getClient()->pipeline();
         foreach ($idList as $id) {
             $pipe->hgetall($this->getKey($id));
         }
-        $replies = $pipe->exec();
+        $replies = $pipe->execute();
 
         foreach (array_values($idList) as $line => $id) {
+            // HGETALL signature seems to differ depending on Predis versions.
+            // This was found just after Predis update. Even though I'm not sure
+            // this comes from Predis or just because we're misusing it.
             if (!empty($replies[$line]) && is_array($replies[$line])) {
                 $ret[$id] = $replies[$line];
             }
@@ -106,18 +103,16 @@ class PhpRedisCacheImpl extends AbstractCacheImpl
             return;
         }
 
+        $key = $this->getKey($id);
+
         $data['volatile'] = (int)$volatile;
 
-        $client = $this->getClient();
-        $key    = $this->getKey($id);
-
-        $pipe = $client->multi(\Redis::PIPELINE);
+        $pipe = $this->getClient()->pipeline();
         $pipe->hmset($key, $data);
-
         if (null !== $ttl) {
             $pipe->expire($key, $ttl);
         }
-        $pipe->exec();
+        $pipe->execute();
     }
 
     /**
@@ -125,7 +120,8 @@ class PhpRedisCacheImpl extends AbstractCacheImpl
      */
     public function delete($id)
     {
-        $this->getClient()->del($this->getKey($id));
+        $client = $this->getClient();
+        $client->del($this->getKey($id));
     }
 
     /**
@@ -133,14 +129,11 @@ class PhpRedisCacheImpl extends AbstractCacheImpl
      */
     public function deleteMultiple(array $idList)
     {
-        $client = $this->getClient();
-
-        $pipe = $client->multi(\Redis::PIPELINE);
+        $pipe = $this->getClient()->pipeline();
         foreach ($idList as $id) {
             $pipe->del($this->getKey($id));
         }
-        // Don't care if something failed.
-        $pipe->exec();
+        $pipe->execute();
     }
 
     /**
@@ -149,7 +142,7 @@ class PhpRedisCacheImpl extends AbstractCacheImpl
     public function deleteByPrefix($prefix)
     {
         $client = $this->getClient();
-        $ret = $client->eval(self::EVAL_DELETE_PREFIX, array($this->getKey($prefix . '*')));
+        $ret = $client->eval(self::EVAL_DELETE_PREFIX, 0, $this->getKey($prefix . '*'));
         if (1 != $ret) {
             trigger_error(sprintf("EVAL failed: %s", $client->getLastError()), E_USER_ERROR);
         }
@@ -158,10 +151,34 @@ class PhpRedisCacheImpl extends AbstractCacheImpl
     /**
      * {@inheritdoc}
      */
+    public function invalidate($id)
+    {
+        throw new \Exception("Not implemented yet");
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function invalidateMultiple(array $idList)
+    {
+        throw new \Exception("Not implemented yet");
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function invalidateAll()
+    {
+        throw new \Exception("Not implemented yet");
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function flush()
     {
         $client = $this->getClient();
-        $ret = $client->eval(self::EVAL_DELETE_PREFIX, array($this->getKey('*')));
+        $ret = $client->eval(self::EVAL_DELETE_PREFIX, 0, $this->getKey('*'));
         if (1 != $ret) {
             trigger_error(sprintf("EVAL failed: %s", $client->getLastError()), E_USER_ERROR);
         }
@@ -173,7 +190,7 @@ class PhpRedisCacheImpl extends AbstractCacheImpl
     public function flushVolatile()
     {
         $client = $this->getClient();
-        $ret = $client->eval(self::EVAL_DELETE_VOLATILE, array($this->getKey('*')));
+        $ret = $client->eval(self::EVAL_DELETE_VOLATILE, 0, $this->getKey('*'));
         if (1 != $ret) {
             trigger_error(sprintf("EVAL failed: %s", $client->getLastError()), E_USER_ERROR);
         }

@@ -2,18 +2,15 @@
 
 namespace MakinaCorpus\RedisBundle\Tests\Drupal7\Cache;
 
-use MakinaCorpus\RedisBundle\Drupal7\Cache\CacheBackend;
+use MakinaCorpus\RedisBundle\Cache\CacheBackend;
+use MakinaCorpus\RedisBundle\Drupal7\RedisCacheBackend;
+use MakinaCorpus\RedisBundle\Tests\AbstractCacheTest;
 
 /**
  * Bugfixes made over time test class.
  */
-abstract class FixesUnitTest extends \PHPUnit_Framework_TestCase
+abstract class FixesUnitTest extends AbstractCacheTest
 {
-    /**
-     * @var Cache bin identifier
-     */
-    static private $id = 1;
-
     protected function setUp()
     {
         if (!class_exists('\DrupalCacheInterface')) {
@@ -23,46 +20,24 @@ abstract class FixesUnitTest extends \PHPUnit_Framework_TestCase
         $GLOBALS['conf'] = [];
     }
 
-    protected function createCacheInstance($name = null)
-    {
-        return new CacheBackend($name);
-    }
-
     /**
-     * Get cache backend
+     * Drupal 7 goes with variables
      *
-     * @return CacheBackend
+     * {@inheritdoc}
      */
-    final protected function getBackend($name = null, $reset = true)
+    protected function getBackend($namespace = null, array $options = null)
     {
-        if (null === $name) {
-            // This is needed to avoid conflict between tests, each test
-            // seems to use the same Redis namespace and conflicts are
-            // possible.
-            if ($reset) {
-                $name = 'cache-fixes-' . (self::$id++);
-            } else {
-                $name = 'cache-fixes-' . (self::$id);
-            }
-        }
+        $namespace = $this->getNamespace($namespace, $options);
 
-        $backend = $this->createCacheInstance($name);
-
-//         $this->assertTrue("Redis client is " . ($backend->isSharded() ? '' : "NOT ") . " sharded");
-//         $this->assertTrue("Redis client is " . ($backend->allowTemporaryFlush() ? '' : "NOT ") . " allowed to flush temporary entries");
-//         $this->assertTrue("Redis client is " . ($backend->allowPipeline() ? '' : "NOT ") . " allowed to use pipeline");
-
-        return $backend;
+        return (new RedisCacheBackend($namespace))->getNestedCacheBackend();
     }
 
     public function testTemporaryCacheExpire()
     {
-        global $conf; // We are in unit tests so variable table does not exist.
-
         $backend = $this->getBackend();
 
         // Permanent entry.
-        $backend->set('test1', 'foo', CACHE_PERMANENT);
+        $backend->set('test1', 'foo', CacheBackend::ITEM_IS_PERMANENT);
         $data = $backend->get('test1');
         $this->assertNotEquals(false, $data);
         $this->assertSame('foo', $data->data);
@@ -74,9 +49,8 @@ abstract class FixesUnitTest extends \PHPUnit_Framework_TestCase
         $this->assertSame('foo', $data->data);
 
         // Expiring entry with permanent default lifetime.
-        $conf['cache_lifetime'] = 0;
-        $backend->refreshMaxTtl();
-        $backend->set('test2', 'bar', CACHE_TEMPORARY);
+        $this->alterOptions($backend, ['cache_lifetime' =>  0]);
+        $backend->set('test2', 'bar', CacheBackend::ITEM_IS_VOLATILE);
         sleep(2);
         $data = $backend->get('test2');
         $this->assertNotEquals(false, $data);
@@ -101,9 +75,8 @@ abstract class FixesUnitTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(false, $data);
 
         // Expiring entry with short default lifetime.
-        $conf['cache_lifetime'] = 1;
-        $backend->refreshMaxTtl();
-        $backend->set('test5', 'foobaz', CACHE_TEMPORARY);
+        $this->alterOptions($backend, ['cache_lifetime' =>  1]);
+        $backend->set('test5', 'foobaz', CacheBackend::ITEM_IS_VOLATILE);
         $data = $backend->get('test5');
         $this->assertNotEquals(false, $data);
         $this->assertSame('foobaz', $data->data);
@@ -114,26 +87,23 @@ abstract class FixesUnitTest extends \PHPUnit_Framework_TestCase
 
     public function testDefaultPermTtl()
     {
-        global $conf;
-        unset($conf['redis_perm_ttl']);
+        variable_del('redis_perm_ttl');
         $backend = $this->getBackend();
         $this->assertSame(CacheBackend::LIFETIME_PERM_DEFAULT, $backend->getPermTtl());
     }
 
     public function testUserSetDefaultPermTtl()
     {
-        global $conf;
         // This also testes string parsing. Not fully, but at least one case.
-        $conf['redis_perm_ttl'] = "3 months";
+        variable_set('redis_perm_ttl', "3 months");
         $backend = $this->getBackend();
         $this->assertSame(7776000, $backend->getPermTtl());
     }
 
     public function testUserSetPermTtl()
     {
-        global $conf;
         // This also testes string parsing. Not fully, but at least one case.
-        $conf['redis_perm_ttl'] = "1 months";
+        variable_set('redis_perm_ttl', "1 months");
         $backend = $this->getBackend();
         $this->assertSame(2592000, $backend->getPermTtl());
     }

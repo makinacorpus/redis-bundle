@@ -2,12 +2,14 @@
 
 namespace MakinaCorpus\RedisBundle\Drupal7;
 
+use MakinaCorpus\RedisBundle\Cache\CacheBackend;
+use MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface;
+use MakinaCorpus\RedisBundle\Cache\Impl\PhpRedisCacheImpl;
+use MakinaCorpus\RedisBundle\Cache\Impl\PredisCacheImpl;
 use MakinaCorpus\RedisBundle\Client\PhpRedisFactory;
 use MakinaCorpus\RedisBundle\Client\PredisFactory;
 use MakinaCorpus\RedisBundle\Client\StandaloneFactoryInterface;
 use MakinaCorpus\RedisBundle\Client\StandaloneManager;
-use MakinaCorpus\RedisBundle\Drupal7\Cache\PhpRedisCacheImpl;
-use MakinaCorpus\RedisBundle\Drupal7\Cache\PredisCacheImpl;
 
 /**
  * This static class only reason to exist is to tie Drupal global
@@ -17,26 +19,6 @@ use MakinaCorpus\RedisBundle\Drupal7\Cache\PredisCacheImpl;
  */
 class ClientFactory
 {
-    /**
-     * Cache implementation namespace.
-     */
-    const REDIS_IMPL_CACHE = 'cache';
-
-    /**
-     * Lock implementation namespace.
-     */
-    const REDIS_IMPL_LOCK = 'lock';
-
-    /**
-     * Cache implementation namespace.
-     */
-    const REDIS_IMPL_QUEUE = 'queue';
-
-    /**
-     * Path implementation namespace.
-     */
-    const REDIS_IMPL_PATH = 'path';
-
     /**
      * @var StandaloneManager
      */
@@ -133,6 +115,89 @@ class ClientFactory
     }
 
     /**
+     * Find client class name
+     *
+     * @return string
+     */
+    static public function getClientInterfaceName()
+    {
+        global $conf;
+
+        if (!empty($conf['redis_client_interface'])) {
+            return $conf['redis_client_interface'];
+        } else if (class_exists('Predis\Client')) {
+            // Transparent and abitrary preference for Predis library.
+            return  $conf['redis_client_interface'] = 'Predis';
+        } else if (class_exists('Redis')) {
+            // Fallback on PhpRedis if available.
+            return $conf['redis_client_interface'] = 'PhpRedis';
+        } else {
+            throw new \Exception("No client interface set.");
+        }
+    }
+
+    /**
+     * Create the redis client factory
+     *
+     * @return StandaloneFactoryInterface
+     */
+    static private function createFactory($clientName)
+    {
+        switch ($clientName) {
+
+            case 'PhpRedis':
+                $class = PhpRedisFactory::class;
+                break;
+
+            case 'Predis':
+                $class = PredisFactory::class;
+                break;
+
+            default:
+                throw new \Exception(sprintf("Client '%s' not implemented", $clientName));
+        }
+
+        if (!class_exists($class)) {
+            throw new \Exception(sprintf("Class '%s' does not exist", $class));
+        }
+
+        return new $class();
+    }
+
+    /**
+     * Create the cache implementation depending on the asked factory
+     *
+     * @param string $bin
+     *
+     * @return StandaloneFactoryInterface
+     */
+    static private function createCacheImpl($bin)
+    {
+        $manager = self::getManager();
+
+        switch ($manager->getFactoryName()) {
+
+            case 'PhpRedis':
+                $class = PhpRedisCacheImpl::class;
+                break;
+
+            case 'Predis':
+                $class = PredisCacheImpl::class;
+                break;
+
+            default:
+                throw new \Exception(sprintf("Cache implementation '%s' is not implemented", $manager->getFactoryName()));
+        }
+
+        if (!class_exists($class)) {
+            throw new \Exception(sprintf("Class '%s' does not exist", $class));
+        }
+
+        /** @var \MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface $impl */
+        return new $class($manager->getClient(), $bin, self::getDefaultPrefix($bin), false);
+    }
+
+    /**
      * Get client manager
      *
      * @return StandaloneManager
@@ -143,7 +208,7 @@ class ClientFactory
 
         if (null === self::$manager) {
 
-            $factory = self::createFactory();
+            $factory = self::createFactory(self::getClientInterfaceName());
 
             // Build server list from conf
             $serverList = [];
@@ -170,106 +235,64 @@ class ClientFactory
     }
 
     /**
-     * Find client class name
+     * Get settings.php options for the given cache bin
      *
-     * @return string
+     * This method is public only for unit tests, do not use it.
+     *
+     * @param string $bin
+     *
+     * @return mixed[]
      */
-    static public function getClientInterfaceName()
+    static public function getOptionsForCacheBackend($bin)
     {
-        global $conf;
+        $options = ['cache_lifetime' => variable_get('cache_lifetime', 0)];
 
-        if (!empty($conf['redis_client_interface'])) {
-            return $conf['redis_client_interface'];
-        } else if (class_exists('Predis\Client')) {
-            // Transparent and abitrary preference for Predis library.
-            return  $conf['redis_client_interface'] = 'Predis';
-        } else if (class_exists('Redis')) {
-            // Fallback on PhpRedis if available.
-            return $conf['redis_client_interface'] = 'PhpRedis';
-        } else {
-            throw new Exception("No client interface set.");
+        if (null !== ($value = variable_get('redis_flush_mode_' . $bin))) {
+            $options['flush_mode'] = (int)$value;
+        } else if (null !== ($value = (int)variable_get('redis_flush_mode'))) {
+            $options['flush_mode'] = (int)$value;
         }
+
+        // Do not cast this value, it can be a string
+        if (null !== ($value = variable_get('redis_perm_ttl_' . $bin))) {
+            $options['perm_ttl'] = $value;
+        } else if (null !== ($value = variable_get('redis_perm_ttl'))) {
+            $options['perm_ttl'] = $value;
+        }
+
+        if (null !== ($value = variable_get('redis_compression_' . $bin))) {
+            $options['compression'] = (bool)$value;
+        } else if (null !== ($value = variable_get('redis_compression'))) {
+            $options['compression'] = (bool)$value;
+        }
+
+        if (null !== ($value = variable_get('redis_compression_threshold_' . $bin))) {
+            $options['compression_threshold'] = (int)$value;
+        } else if (null !== ($value = variable_get('redis_compression_threshold'))) {
+            $options['compression_threshold'] = (int)$value;
+        }
+
+        return $options;
+    }
+
+    /**
+     * Create cache backend by reading the $conf options
+     *
+     * @param string $bin
+     *
+     * @return CacheImplInterface
+     */
+    static public function createCacheBackend($bin)
+    {
+        return new CacheBackend(self::createCacheImpl($bin), self::getOptionsForCacheBackend($bin));
     }
 
     /**
      * For unit test use only
      */
-    static public function reset(StandaloneManager $manager = null)
+    static public function reset()
     {
-        self::$manager = $manager;
-    }
-
-    /**
-     * Get specific class implementing the current client usage for the specific
-     * asked core subsystem.
-     *
-     * @param string $system
-     *   One of the ClientFactory::IMPL_* constant.
-     *
-     * @return string
-     */
-    static public function getClass($system)
-    {
-        $clientName = self::getClientInterfaceName();
-
-        switch ($system) {
-
-            case self::REDIS_IMPL_CACHE:
-                switch ($clientName) {
-
-                    case 'PhpRedis':
-                        $class = PhpRedisCacheImpl::class;
-                        break;
-
-                    case 'Predis':
-                        $class = PredisCacheImpl::class;
-                        break;
-                }
-                break;
-
-            case self::REDIS_IMPL_LOCK:
-            case self::REDIS_IMPL_PATH:
-            case self::REDIS_IMPL_QUEUE:
-            default:
-                throw new \Exception(sprintf("Client %s not implemented for %s ", $system, $clientName));
-        }
-
-        if (!class_exists($class)) {
-            throw new \Exception(sprintf("Class '%s' does not exist", $class));
-        }
-
-        return $class;
-    }
-
-    /**
-     * Get specific class implementing the current client usage for the specific
-     * asked core subsystem.
-     *
-     * @return StandaloneFactoryInterface
-     */
-    static private function createFactory()
-    {
-        $clientName = self::getClientInterfaceName();
-
-        switch ($clientName) {
-
-            case 'PhpRedis':
-                $class = PhpRedisFactory::class;
-                break;
-
-            case 'Predis':
-                $class = PredisFactory::class;
-                break;
-
-            default:
-                throw new \Exception(sprintf("Client '%s' not implemented", $clientName));
-        }
-
-        if (!class_exists($class)) {
-            throw new \Exception(sprintf("Class '%s' does not exist", $class));
-        }
-
-        return new $class();
+        unset(self::$manager);
     }
 }
 
