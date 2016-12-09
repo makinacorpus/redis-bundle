@@ -1,6 +1,6 @@
 <?php
 
-namespace MakinaCorpus\RedisBundle\Cache;
+namespace MakinaCorpus\RedisBundle\Psr6\Standalone;
 
 /**
  * Some implementations might want to explicetely add or remove properties over

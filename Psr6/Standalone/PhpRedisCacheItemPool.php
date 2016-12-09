@@ -1,6 +1,6 @@
 <?php
 
-namespace MakinaCorpus\RedisBundle\Cache;
+namespace MakinaCorpus\RedisBundle\Psr6\Standalone;
 
 use MakinaCorpus\RedisBundle\ChecksumTrait;
 use MakinaCorpus\RedisBundle\RedisAwareTrait;

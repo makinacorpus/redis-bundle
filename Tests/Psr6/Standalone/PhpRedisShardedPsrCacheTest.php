@@ -1,8 +1,8 @@
 <?php
 
-namespace MakinaCorpus\RedisBundle\Tests\Cache;
+namespace MakinaCorpus\RedisBundle\Tests\Psr6\Standalone;
 
-use MakinaCorpus\RedisBundle\Cache\PhpRedisShardedCacheItemPool;
+use MakinaCorpus\RedisBundle\Psr6\Standalone\PhpRedisShardedCacheItemPool;
 use MakinaCorpus\RedisBundle\Client\PhpRedisFactory;
 use MakinaCorpus\RedisBundle\Client\StandaloneManager;
 

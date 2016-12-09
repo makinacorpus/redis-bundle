@@ -1,6 +1,6 @@
 <?php
 
-namespace MakinaCorpus\RedisBundle\Tests\Cache;
+namespace MakinaCorpus\RedisBundle\Tests\Psr6\Standalone;
 
 use Psr\Cache\CacheItemPoolInterface;
 
