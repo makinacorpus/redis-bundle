@@ -1,13 +1,11 @@
 <?php
 
-namespace MakinaCorpus\RedisBundle\Cache\Impl;
-
-use MakinaCorpus\RedisBundle\RedisAwareInterface;
+namespace MakinaCorpus\RedisBundle\Cache;
 
 /**
  * Tag validator abstracts the cache tags validation
  */
-interface TagValidatorInterface extends RedisAwareInterface
+interface TagValidatorInterface
 {
     /**
      * Invalidate given tags

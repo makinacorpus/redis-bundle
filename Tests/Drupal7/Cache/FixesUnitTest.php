@@ -137,9 +137,8 @@ abstract class FixesUnitTest extends AbstractCacheTest
 
     public function testPermTtl()
     {
-        global $conf;
         // This also testes string parsing. Not fully, but at least one case.
-        $conf['redis_perm_ttl'] = "2 seconds";
+        variable_set('redis_perm_ttl', "2 seconds");
         $backend = $this->getBackend();
         $this->assertSame(2, $backend->getPermTtl());
 

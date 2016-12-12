@@ -3,9 +3,10 @@
 namespace MakinaCorpus\RedisBundle\Cache;
 
 use MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface;
+use MakinaCorpus\RedisBundle\Cache\Impl\EntryHydrator;
 use MakinaCorpus\RedisBundle\ChecksumTrait;
-use MakinaCorpus\RedisBundle\Drupal7\ClientFactory;
-use MakinaCorpus\RedisBundle\RedisAwareInterface;
+use MakinaCorpus\RedisBundle\Cache\Impl\NullTagValidator;
+use MakinaCorpus\RedisBundle\Cache\Impl\CompressedEntryHydrator;
 
 /**
  * Because those objects will be spawned during boostrap all its configuration
@@ -79,6 +80,16 @@ class CacheBackend
     private $backend;
 
     /**
+     * @var TagValidatorInterface
+     */
+    private $tagValidator;
+
+    /**
+     * @var EntryHydrator
+     */
+    private $entryHydrator;
+
+    /**
      * Original options passed at the constructor
      *
      * @var mixed[]
@@ -94,6 +105,13 @@ class CacheBackend
      * @var boolean
      */
     private $allowTemporaryFlush = true;
+
+    /**
+     * Does this instance will check tags on load
+     *
+     * @var boolean
+     */
+    private $allowTagsUsage = false;
 
     /**
      * When in shard mode, the backend cannot proceed to multiple keys
@@ -168,6 +186,16 @@ class CacheBackend
     }
 
     /**
+     * Does this instance allow tag usage
+     *
+     * @return boolean
+     */
+    public function allowTagsUsage()
+    {
+        return $this->allowTagsUsage;
+    }
+
+    /**
      * Get TTL for self::ITEM_IS_PERMANENT items.
      *
      * @return int
@@ -205,6 +233,22 @@ class CacheBackend
     }
 
     /**
+     * Set tag validator
+     *
+     * @param TagValidatorInterface $tagValidator
+     */
+    public function setTagValidator(TagValidatorInterface $tagValidator = null)
+    {
+        if (null === $tagValidator) {
+            $this->tagValidator = new NullTagValidator();
+            $this->allowTagsUsage = false;
+        } else {
+            $this->tagValidator = $tagValidator;
+            $this->allowTagsUsage = true;
+        }
+    }
+
+    /**
      * Change current options at runtime
      *
      * @param mixed[] $options
@@ -238,13 +282,19 @@ class CacheBackend
     /**
      * Find from Drupal variables the clear mode.
      */
-    public function refreshCapabilities()
+    private function refreshCapabilities()
     {
         if (0 < $this->options['cache_lifetime']) {
             // Per Drupal default behavior, when the 'cache_lifetime' variable
             // is set we must not flush any temporary items since they have a
             // life time.
             $this->allowTemporaryFlush = false;
+        }
+
+        if ($this->options['compression']) {
+            $this->entryHydrator = new CompressedEntryHydrator((int)$this->options['compression_threshold']);
+        } else {
+            $this->entryHydrator = new EntryHydrator();
         }
 
         $mode = (int)$this->options['flush_mode'];
@@ -256,7 +306,7 @@ class CacheBackend
     /**
      * Find from Drupal variables the right permanent items TTL.
      */
-    public function refreshPermTtl()
+    private function refreshPermTtl()
     {
         $ttl = $this->options['perm_ttl'];
 
@@ -277,7 +327,7 @@ class CacheBackend
     /**
      * Find from Drupal variables the maximum cache lifetime.
      */
-    public function refreshMaxTtl()
+    private function refreshMaxTtl()
     {
         // And now cache lifetime. Be aware we exclude negative values
         // considering those are Drupal misconfiguration.
@@ -369,26 +419,9 @@ class CacheBackend
             $validityThreshold = $flushPerm;
         }
 
-        $time = $this->getValidChecksum($validityThreshold);
+        $checksum = $this->getValidChecksum($validityThreshold);
 
-        $hash = [
-            'cid'     => $cid,
-            'tags'    => implode(',', $tags),
-            'created' => $time,
-            'expire'  => $expire,
-            'valid'   => 1,
-        ];
-
-        // Let Redis handle the data types itself.
-        if (!is_string($data)) {
-            $hash['data'] = serialize($data);
-            $hash['serialized'] = 1;
-        } else {
-            $hash['data'] = $data;
-            $hash['serialized'] = 0;
-        }
-
-        return $hash;
+        return $this->entryHydrator->create($cid, $data, $checksum, $expire, $tags);
     }
 
     /**
@@ -397,7 +430,7 @@ class CacheBackend
      * @param array $values
      *   Raw values fetched from Redis server data
      *
-     * @return array
+     * @return \stdClass
      *   Or false if entry is invalid
      */
     protected function expandEntry(array $values, $flushPerm, $flushVolatile, $allowInvalid = false)
@@ -428,22 +461,7 @@ class CacheBackend
             return false;
         }
 
-        $entry = (object)$values;
-
-        // Reduce the checksum to the real timestamp part
-        $entry->created = (int)$entry->created;
-
-        if ($entry->serialized) {
-            $entry->data = unserialize($entry->data);
-        }
-
-        if (empty($entry->tags)) {
-            $entry->tags = [];
-        } else{
-            $entry->tags = explode(',', $entry->tags);
-        }
-
-        return $entry;
+        return $this->entryHydrator->expand($values, $flushPerm, $flushVolatile);
     }
 
     /**
@@ -711,6 +729,20 @@ class CacheBackend
     public function invalidateAll()
     {
         $this->backend->invalidateAll();
+    }
+
+    /**
+     * Invalidate given tags
+     *
+     * @param array $tags
+     */
+    public function invalidateTags(array $tags)
+    {
+        if (!$this->allowTagsUsage) {
+            throw new \RuntimeException("this backend is not configured to allow tags");
+        }
+
+        $this->tagValidator->invalidate($tags);
     }
 
     /**

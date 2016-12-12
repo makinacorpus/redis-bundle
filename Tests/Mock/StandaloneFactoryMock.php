@@ -10,4 +10,9 @@ class StandaloneFactoryMock implements StandaloneFactoryInterface
     {
         return $options;
     }
+
+    public function getName()
+    {
+        return 'Mock';
+    }
 }

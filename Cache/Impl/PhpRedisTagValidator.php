@@ -2,6 +2,7 @@
 
 namespace MakinaCorpus\RedisBundle\Cache\Impl;
 
+use MakinaCorpus\RedisBundle\Cache\TagValidatorInterface;
 use MakinaCorpus\RedisBundle\ChecksumTrait;
 use MakinaCorpus\RedisBundle\RedisAwareTrait;
 
