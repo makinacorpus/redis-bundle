@@ -14,6 +14,11 @@ class PhpRedisShardedFlushUnitTest extends FlushUnitTest
         $GLOBALS['conf']['redis_flush_mode'] = CacheBackend::FLUSH_SHARD;
     }
 
+    protected function getDsnTarget()
+    {
+        return 'REDIS_DSN_SHARD';
+    }
+
     public function testOptionsPropagation()
     {
         $options = $this->getBackend()->getOptions();

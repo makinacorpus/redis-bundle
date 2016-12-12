@@ -95,21 +95,11 @@ abstract class AbstractCacheTest extends AbstractClientTest
         $impl       = $this->createCacheImpl($factory, $namespace);
         $backend    = new CacheBackend($impl, $options);
 
-//         $this->assertTrue("Redis client is " . ($backend->isSharded() ? '' : "NOT ") . " sharded");
-//         $this->assertTrue("Redis client is " . ($backend->allowTemporaryFlush() ? '' : "NOT ") . " allowed to flush temporary entries");
-//         $this->assertTrue("Redis client is " . ($backend->allowPipeline() ? '' : "NOT ") . " allowed to use pipeline");
-
         return $backend;
     }
 
     protected function setUp()
     {
-        if (!getenv('REDIS_DSN_NORMAL')) {
-            $this->markTestSkipped("Cannot spawn pool, did you check phpunit.xml environment variables?");
-
-            return;
-        }
-
         parent::setUp();
     }
 }

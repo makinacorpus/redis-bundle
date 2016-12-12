@@ -16,6 +16,11 @@ class CompressedPhpRedisShardedWithPipelineFixesUnitTest extends FixesUnitTest
         $GLOBALS['conf']['redis_flush_mode'] = CacheBackend::FLUSH_SHARD_WITH_PIPELINING;
     }
 
+    protected function getDsnTarget()
+    {
+        return 'REDIS_DSN_SHARD_WITH_PIPELINE';
+    }
+
     public function testOptionsPropagation()
     {
         $options = $this->getBackend()->getOptions();

@@ -35,8 +35,16 @@ abstract class AbstractClientTest extends \PHPUnit_Framework_TestCase
     {
         return new StandaloneManager(
             $this->getClientFactory(),
-            ['default' => ['host' => getenv('REDIS_DSN_NORMAL')]]
+            ['default' => ['host' => $this->getDsn()]]
         );
+    }
+
+    /**
+     * Override this to change the testing DSN
+     */
+    protected function getDsnTarget()
+    {
+        return 'REDIS_DSN_NORMAL';
     }
 
     /**
@@ -63,14 +71,21 @@ abstract class AbstractClientTest extends \PHPUnit_Framework_TestCase
         return $namespace;
     }
 
-    protected function setUp()
+    /**
+     * Get current testing DNS
+     *
+     * @return string
+     */
+    final protected function getDsn()
     {
-        if (!getenv('REDIS_DSN_NORMAL')) {
+        $dsn = getenv($this->getDsnTarget());
+
+        if (!$dsn) {
             $this->markTestSkipped("Cannot spawn pool, did you check phpunit.xml environment variables?");
 
             return;
         }
 
-        parent::setUp();
+        return $dsn;
     }
 }

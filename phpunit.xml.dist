@@ -26,7 +26,9 @@
     </filter>
 
     <php>
-        <env name="REDIS_DSN_NORMAL" value="" />
-        <env name="REDIS_DSN_SHARD" value="" />
+        <env name="REDIS_DSN_NORMAL" value="tcp://127.0.0.1:6379/0" />
+        <env name="REDIS_DSN_SHARD" value="tcp://127.0.0.1:6379/0" />
+        <env name="REDIS_DSN_SHARD_WITH_PIPELINE" value="tcp://127.0.0.1:6379/0" />
+        <env name="REDIS_DSN_SENTINEL" value="tcp://127.0.0.1:6381,tcp://127.0.0.1:6382" />
     </php>
 </phpunit>
