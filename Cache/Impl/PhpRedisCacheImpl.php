@@ -11,48 +11,6 @@ class PhpRedisCacheImpl extends AbstractCacheImpl
     /**
      * {@inheritdoc}
      */
-    public function setLastFlushTimeFor($time, $volatile = false)
-    {
-        $client = $this->getClient();
-        $key    = $this->getKey(self::LAST_FLUSH_KEY);
-
-        if ($volatile) {
-            $client->hset($key, 'volatile', $time);
-        } else {
-            $client->hmset($key, array(
-                'permanent' => $time,
-                'volatile' => $time,
-            ));
-        }
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getLastFlushTime()
-    {
-        $client = $this->getClient();
-        $key    = $this->getKey(self::LAST_FLUSH_KEY);
-        $values = $client->hmget($key, array("permanent", "volatile"));
-
-        if (empty($values) || !is_array($values)) {
-            $ret = array(0, 0);
-        } else {
-            if (empty($values['permanent'])) {
-                $values['permanent'] = 0;
-            }
-            if (empty($values['volatile'])) {
-                $values['volatile'] = 0;
-            }
-            $ret = array($values['permanent'], $values['volatile']);
-        }
-
-        return $ret;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     public function get($id)
     {
         $client = $this->getClient();
@@ -161,7 +119,11 @@ class PhpRedisCacheImpl extends AbstractCacheImpl
      */
     public function invalidate($id)
     {
-        throw new \Exception("Not implemented yet");
+        // If the entry does not exist already, don't care, it will set an
+        // empty hash with just the 'valid' value, it will never be loaded.
+        // A cleaner way would have been to use a transaction here, but I
+        // want to keep it shardable friendly, sorry.
+        $this->getClient()->hSet($this->getKey($id), 'valid', 0);
     }
 
     /**
@@ -169,15 +131,11 @@ class PhpRedisCacheImpl extends AbstractCacheImpl
      */
     public function invalidateMultiple(array $idList)
     {
-        throw new \Exception("Not implemented yet");
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function invalidateAll()
-    {
-        throw new \Exception("Not implemented yet");
+        $pipe = $this->getClient()->multi(\Redis::PIPELINE);
+        foreach ($idList as $id) {
+            $pipe->hSet($this->getKey($id), 'valid', 0);
+        }
+        $pipe->exec();
     }
 
     /**

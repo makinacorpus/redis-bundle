@@ -6,6 +6,9 @@ use MakinaCorpus\RedisBundle\Cache\CacheBackend;
 use MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface;
 use MakinaCorpus\RedisBundle\Cache\Impl\PhpRedisCacheImpl;
 use MakinaCorpus\RedisBundle\Cache\Impl\PredisCacheImpl;
+use MakinaCorpus\RedisBundle\Checksum\ChecksumValidator;
+use MakinaCorpus\RedisBundle\Checksum\Impl\PhpRedisChecksumStore;
+use MakinaCorpus\RedisBundle\Checksum\Impl\PredisChecksumStore;
 use MakinaCorpus\RedisBundle\Client\PhpRedisFactory;
 use MakinaCorpus\RedisBundle\Client\PredisFactory;
 use MakinaCorpus\RedisBundle\Client\StandaloneFactoryInterface;
@@ -198,6 +201,39 @@ class ClientFactory
     }
 
     /**
+     * Create the cache implementation depending on the asked factory
+     *
+     * @param string $bin
+     *
+     * @return StandaloneFactoryInterface
+     */
+    static private function createChecksumStoreImpl($bin)
+    {
+        $manager = self::getManager();
+
+        switch ($manager->getFactoryName()) {
+
+            case 'PhpRedis':
+                $class = PhpRedisChecksumStore::class;
+                break;
+
+            case 'Predis':
+                 $class = PredisChecksumStore::class;
+                 break;
+
+            default:
+                throw new \Exception(sprintf("Checksum implementation '%s' is not implemented", $manager->getFactoryName()));
+        }
+
+        if (!class_exists($class)) {
+            throw new \Exception(sprintf("Class '%s' does not exist", $class));
+        }
+
+        /** @var \MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface $impl */
+        return new $class($manager->getClient(), $bin, self::getDefaultPrefix($bin), false);
+    }
+
+    /**
      * Get client manager
      *
      * @return StandaloneManager
@@ -284,7 +320,13 @@ class ClientFactory
      */
     static public function createCacheBackend($bin)
     {
-        return new CacheBackend(self::createCacheImpl($bin), self::getOptionsForCacheBackend($bin));
+        return new CacheBackend(
+            self::createCacheImpl($bin),
+            new ChecksumValidator(
+                self::createChecksumStoreImpl($bin)
+            ),
+            self::getOptionsForCacheBackend($bin)
+        );
     }
 
     /**

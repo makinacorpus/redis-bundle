@@ -11,47 +11,6 @@ class PredisCacheImpl extends AbstractCacheImpl
     /**
      * {@inheritdoc}
      */
-    public function setLastFlushTimeFor($time, $volatile = false)
-    {
-        $client = $this->getClient();
-        $key    = $this->getKey(self::LAST_FLUSH_KEY);
-
-        if ($volatile) {
-            $client->hset($key, 'volatile', $time);
-        } else {
-            $client->hmset($key, array(
-                'permanent' => $time,
-                'volatile' => $time,
-            ));
-        }
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getLastFlushTime()
-    {
-        $client = $this->getClient();
-        $key    = $this->getKey(self::LAST_FLUSH_KEY);
-        $values = $client->hmget($key, array("permanent", "volatile"));
-
-        if (empty($values) || !is_array($values)) {
-            $values = array(0, 0);
-        } else {
-            if (empty($values[0])) {
-                $values[0] = 0;
-            }
-            if (empty($values[1])) {
-                $values[1] = 0;
-            }
-        }
-
-        return $values;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     public function get($id)
     {
         $client = $this->getClient();
@@ -164,14 +123,6 @@ class PredisCacheImpl extends AbstractCacheImpl
      * {@inheritdoc}
      */
     public function invalidateMultiple(array $idList)
-    {
-        throw new \Exception("Not implemented yet");
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function invalidateAll()
     {
         throw new \Exception("Not implemented yet");
     }

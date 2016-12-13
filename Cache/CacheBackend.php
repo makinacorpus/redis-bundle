@@ -3,10 +3,9 @@
 namespace MakinaCorpus\RedisBundle\Cache;
 
 use MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface;
-use MakinaCorpus\RedisBundle\Cache\Impl\EntryHydrator;
-use MakinaCorpus\RedisBundle\ChecksumTrait;
-use MakinaCorpus\RedisBundle\Cache\Impl\NullTagValidator;
 use MakinaCorpus\RedisBundle\Cache\Impl\CompressedEntryHydrator;
+use MakinaCorpus\RedisBundle\Cache\Impl\EntryHydrator;
+use MakinaCorpus\RedisBundle\Checksum\ChecksumValidatorInterface;
 
 /**
  * Because those objects will be spawned during boostrap all its configuration
@@ -18,8 +17,6 @@ use MakinaCorpus\RedisBundle\Cache\Impl\CompressedEntryHydrator;
  */
 class CacheBackend
 {
-    use ChecksumTrait;
-
     /**
      * Cache item has no expiry time and should be kept indefinitly; only
      * manual clear calls or LRU evicition will erase it.
@@ -80,7 +77,12 @@ class CacheBackend
     private $backend;
 
     /**
-     * @var TagValidatorInterface
+     * @var ChecksumValidatorInterface
+     */
+    private $checksumValidator;
+
+    /**
+     * @var ChecksumValidatorInterface
      */
     private $tagValidator;
 
@@ -225,9 +227,10 @@ class CacheBackend
      * @param mixed[] $options
      *   Beahavioural options for this cache, leave empty for default
      */
-    public function __construct(CacheImplInterface $backend, array $options = [])
+    public function __construct(CacheImplInterface $backend, ChecksumValidatorInterface $checksumValidator, array $options = [])
     {
         $this->backend = $backend;
+        $this->checksumValidator = $checksumValidator;
 
         $this->setOptions($options);
     }
@@ -235,17 +238,22 @@ class CacheBackend
     /**
      * Set tag validator
      *
-     * @param TagValidatorInterface $tagValidator
+     * @param ChecksumValidatorInterface $tagValidator
      */
-    public function setTagValidator(TagValidatorInterface $tagValidator = null)
+    public function setTagValidator(ChecksumValidatorInterface $tagValidator = null)
     {
-        if (null === $tagValidator) {
-            $this->tagValidator = new NullTagValidator();
-            $this->allowTagsUsage = false;
-        } else {
-            $this->tagValidator = $tagValidator;
-            $this->allowTagsUsage = true;
-        }
+        $this->tagValidator = $tagValidator;
+        $this->allowTagsUsage = null !== $tagValidator;
+    }
+
+    /**
+     * Get current tag invalidator
+     *
+     * @return ChecksumValidatorInterface
+     */
+    public function getTagValidator()
+    {
+        return $this->tagValidator;
     }
 
     /**
@@ -353,50 +361,11 @@ class CacheBackend
     {
         // Here we need to fetch absolute values from backend, to avoid
         // concurrency problems and ensure data validity.
-        list($flushPerm, $flushVolatile) = $this->backend->getLastFlushTime();
-
-        $checksum = $this->getValidChecksum(
-            max([
-                $flushPerm,
-                $flushVolatile,
-                $permanent,
-                time(),
-            ])
-        );
-
         if ($permanent) {
-            $this->backend->setLastFlushTimeFor($checksum, false);
-            $this->backend->setLastFlushTimeFor($checksum, true);
-            $this->flushCache = array($checksum, $checksum);
+            $this->checksumValidator->invalidateAllChecksums(['permanent', 'volatile']);
         } else if ($volatile) {
-            $this->backend->setLastFlushTimeFor($checksum, true);
-            $this->flushCache = array($flushPerm, $checksum);
+            $this->checksumValidator->invalidateChecksum('volatile');
         }
-    }
-
-    /**
-     * Get latest flush time
-     *
-     * @return string[]
-     *   First value is the latest flush time for permanent entries checksum,
-     *   second value is the latest flush time for volatile entries checksum.
-     */
-    public function getLastFlushTime()
-    {
-        if (!$this->flushCache) {
-            $this->flushCache = $this->backend->getLastFlushTime();
-        }
-
-         // At the very first hit, we might not have the timestamps set, thus
-         // we need to create them to avoid our entry being considered as
-         // invalid
-        if (!$this->flushCache[0]) {
-            $this->setLastFlushTime(true, true);
-        } else if (!$this->flushCache[1]) {
-            $this->setLastFlushTime(false, true);
-        }
-
-        return $this->flushCache;
     }
 
     /**
@@ -411,17 +380,23 @@ class CacheBackend
      */
     protected function createEntryHash($cid, $data, $expire = self::ITEM_IS_PERMANENT, array $tags = [])
     {
-        list($flushPerm, $flushVolatile) = $this->getLastFlushTime();
-
         if (self::ITEM_IS_VOLATILE === $expire) {
-            $validityThreshold = max([$flushVolatile, $flushPerm]);
+            $checksum = $this->checksumValidator->getValidChecksumFor(['permanent', 'volatile']);
         } else {
-            $validityThreshold = $flushPerm;
+            $checksum = $this->checksumValidator->getValidChecksum('permanent');
         }
 
-        $checksum = $this->getValidChecksum($validityThreshold);
+        $values = $this->entryHydrator->create($cid, $data, $checksum, $expire, $tags);
 
-        return $this->entryHydrator->create($cid, $data, $checksum, $expire, $tags);
+        if ($tags) {
+            if ($this->allowTagsUsage) {
+                $values['checksum'] = $this->tagValidator->getValidChecksumFor($tags);
+            } else {
+                trigger_error("using tags on a backend that does not supports it", E_DEPRECATED);
+            }
+        }
+
+        return $values;
     }
 
     /**
@@ -433,11 +408,20 @@ class CacheBackend
      * @return \stdClass
      *   Or false if entry is invalid
      */
-    protected function expandEntry(array $values, $flushPerm, $flushVolatile, $allowInvalid = false)
+    protected function expandEntry(array $values, $allowInvalid = false)
     {
         // Check for entry being valid.
         if (empty($values['cid'])) {
             return;
+        }
+
+        // Shortcut invalid entries
+        if (isset($values['valid'])) {
+            if (!$values['valid'] && !$allowInvalid) {
+                return false;
+            }
+        } else {
+            $values['valid'] = 1;
         }
 
         // This ensures backward compatibility with older version of
@@ -451,17 +435,37 @@ class CacheBackend
         }
 
         // Ensure the entry does not predate the last flush time.
-        if ($this->allowTemporaryFlush && !empty($values['volatile'])) {
-            $validityThreshold = max([$flushPerm, $flushVolatile]);
+        $isCreatedValid = false;
+        if ($allowInvalid || ($this->allowTemporaryFlush && !empty($values['volatile']))) {
+            $isCreatedValid = $this->checksumValidator->areChecksumsValid(['permanent', 'volatile'], $values['created']);
         } else {
-            $validityThreshold = $flushPerm;
+            $isCreatedValid = $this->checksumValidator->isChecksumValid('permanent', $values['created']);
         }
 
-        if ($values['created'] <= $validityThreshold) {
+        if (!$isCreatedValid) {
             return false;
         }
 
-        return $this->entryHydrator->expand($values, $flushPerm, $flushVolatile);
+        $entry = $this->entryHydrator->expand($values);
+
+        // If invalid entries are allowed, just make it pass, and benefit at
+        // this point from NOT loading the tags checksum, avoiding precious
+        // Redis round-trips
+        if ($entry->tags) {
+            if (!$entry->checksum) {
+                return false;
+            } else if ($this->allowTagsUsage) {
+                if (!$allowInvalid) {
+                    if (!$this->tagValidator->areChecksumsValid($entry->tags, $entry->checksum)) {
+                        return false;
+                    }
+                }
+            } else {
+                trigger_error("loading an entry with tags on a backend that does not supports it", E_DEPRECATED);
+            }
+        }
+
+        return $entry;
     }
 
     /**
@@ -491,9 +495,7 @@ class CacheBackend
             return false;
         }
 
-        list($flushPerm, $flushVolatile) = $this->getLastFlushTime();
-
-        $entry = $this->expandEntry($values, $flushPerm, $flushVolatile, $allowInvalid);
+        $entry = $this->expandEntry($values, $allowInvalid);
 
         if (!$entry) { // This entry exists but is invalid.
             $this->backend->delete($cid);
@@ -540,11 +542,9 @@ class CacheBackend
             $entries = $this->backend->getMultiple($cids);
         }
 
-        list($flushPerm, $flushVolatile) = $this->getLastFlushTime();
-
         foreach ($cids as $key => $cid) {
             if (!empty($entries[$cid])) {
-                $entry = $this->expandEntry($entries[$cid], $flushPerm, $flushVolatile);
+                $entry = $this->expandEntry($entries[$cid], $allowInvalid);
             } else {
                 $entry = null;
             }
@@ -574,7 +574,7 @@ class CacheBackend
      */
     public function set($cid, $data, $expire = self::ITEM_IS_PERMANENT, array $tags = [])
     {
-        $hash   = $this->createEntryHash($cid, $data, $expire);
+        $hash   = $this->createEntryHash($cid, $data, $expire, $tags);
         $maxTtl = $this->getMaxTtl();
 
         switch ($expire) {
@@ -626,7 +626,7 @@ class CacheBackend
 
             $item += ['expire'  => self::ITEM_IS_PERMANENT, 'tags' => []];
 
-            $this->set($cid, $item['data'], $item['expire'], $items['tags']);
+            $this->set($cid, $item['data'], $item['expire'], $item['tags']);
         }
     }
 
@@ -683,7 +683,7 @@ class CacheBackend
     {
           if (!$this->isSharded) {
               // Do not flush temporary items from this call, only invalidate
-              // them so thee caller can still load something, in case of heavy
+              // them so the caller can still load something, in case of heavy
               // load
               $this->setLastFlushTime(true);
           } else {
@@ -717,7 +717,17 @@ class CacheBackend
      */
     public function invalidateMultiple(array $cids)
     {
-        $this->backend->invalidateMultiple($cids);
+        if (!$cids) {
+            return;
+        }
+
+        if ($this->allowPipeline) {
+            $this->backend->invalidateMultiple($cids);
+        } else {
+            foreach ($cids as $cid) {
+                $this->backend->invalidate($cid);
+            }
+        }
     }
 
     /**
@@ -728,7 +738,13 @@ class CacheBackend
      */
     public function invalidateAll()
     {
-        $this->backend->invalidateAll();
+        if (true || $this->isSharded) {
+            // Just normally flush, invalid entries will be allowed naturally
+            // following the latest volatile flush
+            $this->setLastFlushTime(true);
+        } else {
+            // @todo should it be implemented using eval too?
+        }
     }
 
     /**
@@ -739,7 +755,8 @@ class CacheBackend
     public function invalidateTags(array $tags)
     {
         if (!$this->allowTagsUsage) {
-            throw new \RuntimeException("this backend is not configured to allow tags");
+            trigger_error("invalidating tags on a backend that does not supports it", E_DEPRECATED);
+            return;
         }
 
         $this->tagValidator->invalidate($tags);

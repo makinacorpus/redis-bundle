@@ -12,22 +12,6 @@ use MakinaCorpus\RedisBundle\RedisAwareInterface;
 interface CacheImplInterface extends RedisAwareInterface
 {
     /**
-     * Set last flush time
-     *
-     * @param int $time
-     * @param boolean $volatile
-     */
-    public function setLastFlushTimeFor($time, $volatile = false);
-
-    /**
-     * Get last flush time
-     *
-     * @return int[]
-     *   First value is for non-volatile items, second value is for volatile items.
-     */
-    public function getLastFlushTime();
-
-    /**
      * Get a single entry
      *
      * @param string $id
@@ -97,11 +81,6 @@ interface CacheImplInterface extends RedisAwareInterface
      * @param string[] $idList
      */
     public function invalidateMultiple(array $idList);
-
-    /**
-     * Marks all cache items as being invalid
-     */
-    public function invalidateAll();
 
     /**
      * Flush all entries

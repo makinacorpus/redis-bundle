@@ -6,6 +6,8 @@ use MakinaCorpus\RedisBundle\Cache\CacheBackend;
 use MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface;
 use MakinaCorpus\RedisBundle\Cache\Impl\PhpRedisCacheImpl;
 use MakinaCorpus\RedisBundle\Cache\Impl\PredisCacheImpl;
+use MakinaCorpus\RedisBundle\Checksum\ChecksumValidator;
+use MakinaCorpus\RedisBundle\Checksum\Impl\PhpRedisChecksumStore;
 use MakinaCorpus\RedisBundle\Client\StandaloneFactoryInterface;
 
 /**
@@ -62,6 +64,29 @@ abstract class AbstractCacheTest extends AbstractClientTest
         throw new \Exception(sprintf("Unsupported cache implementation for client factory '%s'", $factory->getName()));
     }
 
+    /**
+     * Create cache implementation
+     *
+     * @param StandaloneFactoryInterface $factory
+     *
+     * @return TagValidatorInterface
+     */
+    protected function createChecksumImpl(StandaloneFactoryInterface $factory, $namespace)
+    {
+        $manager = $this->getClientManager();
+
+        switch ($factory->getName()) {
+
+            case 'PhpRedis':
+                return new PhpRedisChecksumStore($manager->getClient(), $namespace, true, null);
+
+            case 'Predis':
+                // return new PredisCacheImpl($manager->getClient(), $namespace, true, null);
+        }
+
+        throw new \Exception(sprintf("Unsupported cache implementation for client factory '%s'", $factory->getName()));
+    }
+
     protected function alterOptions(CacheBackend $backend, array $options)
     {
         if ($options) {
@@ -93,7 +118,13 @@ abstract class AbstractCacheTest extends AbstractClientTest
         $factory    = $this->getClientFactory();
         $options    = $this->getCacheOptions();
         $impl       = $this->createCacheImpl($factory, $namespace);
-        $backend    = new CacheBackend($impl, $options);
+        $tagsCheck  = new ChecksumValidator($this->createChecksumImpl($factory, $namespace . '.tags'));
+        $checksum   = new ChecksumValidator($this->createChecksumImpl($factory, $namespace . '.check'));
+
+        $backend = new CacheBackend($impl, $checksum, $options);
+        $backend->setTagValidator($tagsCheck);
+
+        $backend->flush();
 
         return $backend;
     }
