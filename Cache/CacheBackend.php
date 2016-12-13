@@ -424,16 +424,6 @@ class CacheBackend
             $values['valid'] = 1;
         }
 
-        // This ensures backward compatibility with older version of
-        // this module's data still stored in Redis.
-        if (isset($values['expire'])) {
-            $expire = (int)$values['expire'];
-            // Ensure the entry is valid and have not expired.
-            if ($expire !== self::ITEM_IS_PERMANENT && $expire !== self::ITEM_IS_VOLATILE && $expire <= time()) {
-                return false;
-            }
-        }
-
         // Ensure the entry does not predate the last flush time.
         $isCreatedValid = false;
         if ($allowInvalid || ($this->allowTemporaryFlush && !empty($values['volatile']))) {
