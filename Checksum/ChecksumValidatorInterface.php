@@ -54,6 +54,17 @@ interface ChecksumValidatorInterface
     public function getValidChecksumFor(array $idList);
 
     /**
+     * Get all valid checksum for all identifiers
+     *
+     * @param string[] $idList
+     *   Arbitrary checksum identifier list dependent from the business layer
+     *
+     * @return string[]
+     *   Keys are identifiers, values are valid checksums
+     */
+    public function getAllValidChecksumsFor(array $idList);
+
+    /**
      * Generate a new valid checksum, invalidating the already existing one
      *
      * @param string $id

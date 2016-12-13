@@ -21,50 +21,6 @@ final class ChecksumValidator implements ChecksumValidatorInterface
     }
 
     /**
-     * Load checksums, and save missing
-     *
-     * @param string[] $idList
-     *
-     * @return string[]
-     *   Keys are identifiers, values are valid checksums
-     */
-    private function getAllValidChecksumsFor(array $idList)
-    {
-        $ret = [];
-        $missing = [];
-
-        foreach ($idList as $id) {
-            if (isset($this->checksums[$id])) {
-                $ret[$id] = $this->checksums[$id];
-            } else{
-                $missing[] = $id;
-            }
-        }
-
-        if ($missing) {
-
-            foreach ($this->store->loadAll($missing) as $id => $checksum) {
-                $ret[$id] = $this->checksums[$id] = $checksum;
-            }
-
-            $created = [];
-
-            foreach ($missing as $id) {
-                if (!isset($this->checksums[$id])) {
-                    // This one is missing, and needs to be recreated
-                    $ret[$id] = $this->checksums[$id] = $created[$id] = $this->getNextChecksum();
-                }
-            }
-
-            if ($created) {
-                $this->store->saveAll($created);
-            }
-        }
-
-        return $ret;
-    }
-
-    /**
      * {@inheritdoc}
      */
     final public function isChecksumValid($id, $checksum)
@@ -113,6 +69,45 @@ final class ChecksumValidator implements ChecksumValidatorInterface
     /**
      * {@inheritdoc}
      */
+    final public function getAllValidChecksumsFor(array $idList)
+    {
+        $ret = [];
+        $missing = [];
+
+        foreach ($idList as $id) {
+            if (isset($this->checksums[$id])) {
+                $ret[$id] = $this->checksums[$id];
+            } else{
+                $missing[] = $id;
+            }
+        }
+
+        if ($missing) {
+
+            foreach ($this->store->loadAll($missing) as $id => $checksum) {
+                $ret[$id] = $this->checksums[$id] = $checksum;
+            }
+
+            $created = [];
+
+            foreach ($missing as $id) {
+                if (!isset($this->checksums[$id])) {
+                    // This one is missing, and needs to be recreated
+                    $ret[$id] = $this->checksums[$id] = $created[$id] = $this->getNextChecksum();
+                }
+            }
+
+            if ($created) {
+                $this->store->saveAll($created);
+            }
+        }
+
+        return $ret;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     final public function invalidateChecksum($id)
     {
         if (isset($this->checksums[$id])) {
@@ -150,17 +145,26 @@ final class ChecksumValidator implements ChecksumValidatorInterface
         // might do the same thing in between: we could accidentally create an
         // invalid checksum (that would be valid for us) and store items with
         // invalid checksums using the wrongly cached one.
-        foreach ($this->store->loadAll($idList) as $id => $checksum) {
-            $this->checksums[$id] = $checksum;
+        $existing = $this->store->loadAll($idList);
+
+        // Avoid non existing checksums, and fetch only the maximum one, and
+        // invalidate pretty much everything using the same value instead of
+        // dealing with each one individually: this will be faster and more
+        // resilient to time.
+        $current = null;
+        foreach ($existing as $checksum) {
+            $checksum = $this->getNextChecksum($checksum);
+            if ($current < $checksum) {
+                $current = $checksum;
+            }
+        }
+
+        if (!$current) {
+            $current = $this->getNextChecksum();
         }
 
         foreach ($idList as $id) {
-            if (isset($this->checksums[$id])) {
-                $checksum = $this->getNextChecksum($this->checksums[$id]);
-            } else {
-                $checksum = $this->getNextChecksum();
-            }
-            $this->checksums[$id] = $ret[$id] = $checksum;
+            $ret[$id] = $this->checksums[$id] = $current;
         }
 
         $this->store->saveAll($ret);
