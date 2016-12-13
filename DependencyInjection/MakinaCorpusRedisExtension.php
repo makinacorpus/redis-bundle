@@ -86,15 +86,19 @@ class MakinaCorpusRedisExtension extends Extension
             $definition->setArguments([null, $redisHostList, $options['timeout'], $options['read_timeout'], $isPersistent]);
 
             switch ($options['failover']) {
+
                 case 0:
                     $definition->addMethodCall('setOption', [\RedisCluster::OPT_SLAVE_FAILOVER, \RedisCluster::FAILOVER_NONE]);
                     break;
+
                 case 1:
                     $definition->addMethodCall('setOption', [\RedisCluster::OPT_SLAVE_FAILOVER, \RedisCluster::FAILOVER_ERROR]);
                     break;
+
                 case 2:
                     $definition->addMethodCall('setOption', [\RedisCluster::OPT_SLAVE_FAILOVER, \RedisCluster::FAILOVER_DISTRIBUTE]);
                     break;
+
                 default:
                     throw new \InvalidArgumentException(sprintf("%d: unknown failover mode, must be 0, 1 or 2", $options['failover']));
             }
