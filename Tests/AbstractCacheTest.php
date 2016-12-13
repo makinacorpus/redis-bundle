@@ -101,7 +101,34 @@ abstract class AbstractCacheTest extends AbstractClientTest
     }
 
     /**
-     * Get cache backend
+     * Get cache backend without flushing it first
+     *
+     * @param string $namespace
+     *   Cache backend namespace
+     * @param array $options
+     *   If not null, this will force a reset of the backend options and will
+     *   not increment the default namespace identifier if no namespace is
+     *   given
+     *
+     * @return CacheBackend
+     */
+    protected function getBackendWithoutFlush($namespace = null, array $options = null)
+    {
+        $namespace  = $this->computeClientNamespace($namespace, $options);
+        $factory    = $this->getClientFactory();
+        $options    = $this->getCacheOptions();
+        $impl       = $this->createCacheImpl($factory, $namespace);
+        $tagsCheck  = new ChecksumValidator($this->createChecksumImpl($factory, $namespace . '.tags'));
+        $checksum   = new ChecksumValidator($this->createChecksumImpl($factory, $namespace . '.check'));
+
+        $backend = new CacheBackend($impl, $checksum, $options);
+        $backend->setTagValidator($tagsCheck);
+
+        return $backend;
+    }
+
+    /**
+     * Get cache backend without flushing it first
      *
      * @param string $namespace
      *   Cache backend namespace
@@ -114,16 +141,7 @@ abstract class AbstractCacheTest extends AbstractClientTest
      */
     protected function getBackend($namespace = null, array $options = null)
     {
-        $namespace  = $this->computeClientNamespace($namespace, $options);
-        $factory    = $this->getClientFactory();
-        $options    = $this->getCacheOptions();
-        $impl       = $this->createCacheImpl($factory, $namespace);
-        $tagsCheck  = new ChecksumValidator($this->createChecksumImpl($factory, $namespace . '.tags'));
-        $checksum   = new ChecksumValidator($this->createChecksumImpl($factory, $namespace . '.check'));
-
-        $backend = new CacheBackend($impl, $checksum, $options);
-        $backend->setTagValidator($tagsCheck);
-
+        $backend = $this->getBackendWithoutFlush($namespace, $options);
         $backend->flush();
 
         return $backend;
