@@ -10,7 +10,11 @@ class PhpRedisShardedWithPipelineFixesUnitTest extends FixesUnitTest
     {
         parent::setUp();
 
-        $GLOBALS['conf']['redis_client_interface'] = 'PhpRedis';
+        $GLOBALS['conf']['redis_servers']['default'] = [
+            'type' => 'phpredis',
+            'host' => $this->getDsn(),
+        ];
+
         $GLOBALS['conf']['redis_flush_mode'] = CacheBackend::FLUSH_SHARD_WITH_PIPELINING;
     }
 

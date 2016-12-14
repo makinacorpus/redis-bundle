@@ -10,6 +10,6 @@ class CompressedPhpRedisShardedFixesUnitTest extends FixesUnitTest
     {
         $GLOBALS['conf']['redis_flush_mode'] = CacheBackend::FLUSH_SHARD;
 
-        return 'PhpRedis';
+        return 'phpredis';
     }
 }

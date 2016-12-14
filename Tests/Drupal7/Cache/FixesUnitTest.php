@@ -21,7 +21,9 @@ abstract class FixesUnitTest extends AbstractCacheTest
     }
 
     /**
-     * {@inheritdoc}
+     * Get backend
+     *
+     * @return CacheBackend
      */
     protected function getBackend($namespace = null, array $options = null)
     {

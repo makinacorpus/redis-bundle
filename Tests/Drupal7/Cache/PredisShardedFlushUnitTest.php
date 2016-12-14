@@ -10,7 +10,11 @@ class PredisShardedFlushUnitTest extends FlushUnitTest
     {
         parent::setUp();
 
-        $GLOBALS['conf']['redis_client_interface'] = 'Predis';
+        $GLOBALS['conf']['redis_servers']['default'] = [
+            'type' => 'predis',
+            'host' => $this->getDsn(),
+        ];
+
         $GLOBALS['conf']['redis_flush_mode'] = CacheBackend::FLUSH_SHARD;
     }
 

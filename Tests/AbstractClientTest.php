@@ -2,8 +2,6 @@
 
 namespace MakinaCorpus\RedisBundle\Tests;
 
-use MakinaCorpus\RedisBundle\Client\PhpRedisFactory;
-use MakinaCorpus\RedisBundle\Client\StandaloneFactoryInterface;
 use MakinaCorpus\RedisBundle\Client\StandaloneManager;
 
 /**
@@ -17,13 +15,13 @@ abstract class AbstractClientTest extends \PHPUnit_Framework_TestCase
     static private $id = 1;
 
     /**
-     * Get client factory
+     * Change or append connection options if necessary
      *
-     * @return StandaloneFactoryInterface
+     * @return mixed[]
      */
-    protected function getClientFactory()
+    protected function getConnectorOptions()
     {
-        return new PhpRedisFactory();
+        return [];
     }
 
     /**
@@ -33,10 +31,11 @@ abstract class AbstractClientTest extends \PHPUnit_Framework_TestCase
      */
     final protected function getClientManager()
     {
-        return new StandaloneManager(
-            $this->getClientFactory(),
-            ['default' => ['host' => $this->getDsn()]]
-        );
+        $options = $this->getConnectorOptions();
+        $options['host'] = $this->getDsn();
+        $options += ['type' => 'phpredis'];
+
+        return new StandaloneManager(['default' => $options]);
     }
 
     /**

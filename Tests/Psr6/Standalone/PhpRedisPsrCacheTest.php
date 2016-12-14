@@ -2,9 +2,8 @@
 
 namespace MakinaCorpus\RedisBundle\Tests\Psr6\Standalone;
 
-use MakinaCorpus\RedisBundle\Psr6\Standalone\PhpRedisCacheItemPool;
-use MakinaCorpus\RedisBundle\Client\PhpRedisFactory;
 use MakinaCorpus\RedisBundle\Client\StandaloneManager;
+use MakinaCorpus\RedisBundle\Psr6\Standalone\PhpRedisCacheItemPool;
 
 class PhpRedisPsrCacheTest extends AbstractPsrCacheTest
 {
@@ -24,10 +23,12 @@ class PhpRedisPsrCacheTest extends AbstractPsrCacheTest
      */
     protected function buildCacheItemPool($beParanoid = false, $maxLifetime = null)
     {
-        $manager = new StandaloneManager(
-            new PhpRedisFactory(),
-            ['default' => ['host' => getenv('REDIS_DSN_NORMAL')]]
-        );
+        $manager = new StandaloneManager([
+            'default' => [
+                'type' => 'phpredis',
+                'host' => getenv('REDIS_DSN_NORMAL'),
+            ]
+        ]);
 
         return new PhpRedisCacheItemPool(
             $manager->getClient(),

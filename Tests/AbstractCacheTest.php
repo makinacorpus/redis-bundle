@@ -8,6 +8,7 @@ use MakinaCorpus\RedisBundle\Cache\Impl\PhpRedisCacheImpl;
 use MakinaCorpus\RedisBundle\Cache\Impl\PredisCacheImpl;
 use MakinaCorpus\RedisBundle\Checksum\ChecksumValidator;
 use MakinaCorpus\RedisBundle\Checksum\Impl\PhpRedisChecksumStore;
+use MakinaCorpus\RedisBundle\Checksum\Impl\PredisChecksumStore;
 use MakinaCorpus\RedisBundle\Client\StandaloneFactoryInterface;
 
 /**
@@ -16,23 +17,13 @@ use MakinaCorpus\RedisBundle\Client\StandaloneFactoryInterface;
 abstract class AbstractCacheTest extends AbstractClientTest
 {
     /**
-     * Get cache options overrides
-     *
-     * @return mixed[]
-     */
-    protected function getCacheOptionsOverrides()
-    {
-        return [];
-    }
-
-    /**
      * Get cache backend options
      *
      * @return mixed[]
      */
     protected function getCacheOptions()
     {
-        return $this->getCacheOptionsOverrides() + [
+        return [
             'cache_lifetime'          => CacheBackend::ITEM_IS_PERMANENT,
             'flush_mode'              => CacheBackend::FLUSH_NORMAL,
             'perm_ttl'                => CacheBackend::LIFETIME_PERM_DEFAULT,
@@ -54,10 +45,10 @@ abstract class AbstractCacheTest extends AbstractClientTest
 
         switch ($factory->getName()) {
 
-            case 'PhpRedis':
+            case 'phpredis':
                 return new PhpRedisCacheImpl($manager->getClient(), $namespace, true, null);
 
-            case 'Predis':
+            case 'predis':
                 return new PredisCacheImpl($manager->getClient(), $namespace, true, null);
         }
 
@@ -77,11 +68,11 @@ abstract class AbstractCacheTest extends AbstractClientTest
 
         switch ($factory->getName()) {
 
-            case 'PhpRedis':
+            case 'phpredis':
                 return new PhpRedisChecksumStore($manager->getClient(), $namespace, true, null);
 
-            case 'Predis':
-                // return new PredisCacheImpl($manager->getClient(), $namespace, true, null);
+             case 'predis':
+                 return new PredisChecksumStore($manager->getClient(), $namespace, true, null);
         }
 
         throw new \Exception(sprintf("Unsupported cache implementation for client factory '%s'", $factory->getName()));
@@ -130,7 +121,7 @@ abstract class AbstractCacheTest extends AbstractClientTest
     protected function getBackendWithoutFlush($namespace = null, array $options = null)
     {
         $namespace  = $this->computeClientNamespace($namespace, $options);
-        $factory    = $this->getClientFactory();
+        $factory    = $this->getClientManager()->getFactory();
         $options    = $this->getCacheOptions();
         $impl       = $this->createCacheImpl($factory, $namespace);
         $tagsCheck  = new ChecksumValidator($this->createChecksumImpl($factory, $namespace . '.tags'));

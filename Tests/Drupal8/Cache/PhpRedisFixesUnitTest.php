@@ -6,6 +6,6 @@ class PhpRedisFixesUnitTest extends FixesUnitTest
 {
     protected function getClientInterface()
     {
-        return 'PhpRedis';
+        return 'phpredis';
     }
 }

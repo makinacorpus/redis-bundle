@@ -61,34 +61,89 @@ class StandaloneManager
     private $clients = [];
 
     /**
-     * @var StandaloneFactoryInterface
+     * @var StandaloneFactoryInterface[]
      */
-    private $factory;
+    private $factories = [];
 
     /**
      * Default constructor
      *
-     * @param ClientStandaloneFactoryInterface $factory
-     *   Client factory
      * @param array $config
      *   Server connection info list
+     * @param StandaloneFactoryInterface[] $factories
+     *   Keys are 'type' from server configuration, values are associated instances
      */
-    public function __construct(StandaloneFactoryInterface $factory, $config = [])
+    public function __construct(array $config = [], array $factories = [])
     {
-        $this->factory = $factory;
+        $this->factories = $factories;
         $this->config = $config;
+    }
+
+    /**
+     * Get realm type, if realm is not defined, it fallbacks on default
+     *
+     * @param string $realm
+     *
+     * @return string
+     */
+    private function getRealmType($realm)
+    {
+        if ($realm === self::REALM_DEFAULT) {
+            $candidates = [$realm];
+        } else {
+            $candidates = [$realm, self::REALM_DEFAULT];
+        }
+
+        foreach ($candidates as $candidate) {
+            if (array_key_exists($candidate, $this->config)) {
+                if (!isset($this->config[$candidate]['type'])) {
+                    throw new \InvalidArgumentException(sprintf("redis realm %s does not define a type", $candidate));
+                }
+                return $this->config[$candidate]['type'];
+            }
+        }
+
+        throw new \InvalidArgumentException(sprintf("could not find configuration for realm %s", $candidate));
+    }
+
+    /**
+     * Create factory for realm depending on the configured type
+     *
+     * @param unknown $realm
+     */
+    private function createFactoryFor($realm)
+    {
+        $type = $this->getRealmType($realm);
+
+        switch ($type) {
+
+            case 'phpredis':
+                return new PhpRedisFactory();
+
+            case 'predis':
+                return new PredisFactory();
+
+            default:
+                throw new \InvalidArgumentException(sprintf("factory for type '%s' cannot be automatically determined", $type));
+        }
     }
 
     /**
      * Get factory
      *
-     * @return StandaloneFactoryInterface
+     * @param string $server
+     *   Server identifier
      *
-     * @deprecated
+     * @return StandaloneFactoryInterface
      */
-    public function getFactory()
+    public function getFactory($realm = self::REALM_DEFAULT)
     {
-        return $this->factory;
+        if (!isset($this->factories[$realm])) {
+            // Instanciate the right standalone factory if not exists
+            $this->factories[$realm] = $this->createFactoryFor($realm);
+        }
+
+        return $this->factories[$realm];
     }
 
     /**
@@ -96,9 +151,9 @@ class StandaloneManager
      *
      * @return string
      */
-    public function getFactoryName()
+    public function getFactoryName($realm = self::REALM_DEFAULT)
     {
-        return $this->factory->getName();
+        return $this->getFactory($realm)->getName();
     }
 
     /**
@@ -182,6 +237,6 @@ class StandaloneManager
             return false;
         }
 
-        return $this->factory->createClient($info);
+        return $this->getFactory($realm)->createClient($info);
     }
 }

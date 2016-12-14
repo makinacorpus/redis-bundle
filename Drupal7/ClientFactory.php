@@ -118,159 +118,6 @@ class ClientFactory
     }
 
     /**
-     * Find client class name
-     *
-     * @return string
-     */
-    static public function getClientInterfaceName()
-    {
-        global $conf;
-
-        if (!empty($conf['redis_client_interface'])) {
-            return $conf['redis_client_interface'];
-        } else if (class_exists('Predis\Client')) {
-            // Transparent and abitrary preference for Predis library.
-            return  $conf['redis_client_interface'] = 'Predis';
-        } else if (class_exists('Redis')) {
-            // Fallback on PhpRedis if available.
-            return $conf['redis_client_interface'] = 'PhpRedis';
-        } else {
-            throw new \Exception("No client interface set.");
-        }
-    }
-
-    /**
-     * Create the redis client factory
-     *
-     * @return StandaloneFactoryInterface
-     */
-    static private function createFactory($clientName)
-    {
-        switch ($clientName) {
-
-            case 'PhpRedis':
-                $class = PhpRedisFactory::class;
-                break;
-
-            case 'Predis':
-                $class = PredisFactory::class;
-                break;
-
-            default:
-                throw new \Exception(sprintf("Client '%s' not implemented", $clientName));
-        }
-
-        if (!class_exists($class)) {
-            throw new \Exception(sprintf("Class '%s' does not exist", $class));
-        }
-
-        return new $class();
-    }
-
-    /**
-     * Create the cache implementation depending on the asked factory
-     *
-     * @param string $bin
-     *
-     * @return StandaloneFactoryInterface
-     */
-    static private function createCacheImpl($bin)
-    {
-        $manager = self::getManager();
-
-        switch ($manager->getFactoryName()) {
-
-            case 'PhpRedis':
-                $class = PhpRedisCacheImpl::class;
-                break;
-
-            case 'Predis':
-                $class = PredisCacheImpl::class;
-                break;
-
-            default:
-                throw new \Exception(sprintf("Cache implementation '%s' is not implemented", $manager->getFactoryName()));
-        }
-
-        if (!class_exists($class)) {
-            throw new \Exception(sprintf("Class '%s' does not exist", $class));
-        }
-
-        /** @var \MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface $impl */
-        return new $class($manager->getClient(), $bin, self::getDefaultPrefix($bin), false);
-    }
-
-    /**
-     * Create the cache implementation depending on the asked factory
-     *
-     * @param string $bin
-     *
-     * @return StandaloneFactoryInterface
-     */
-    static private function createChecksumStoreImpl($bin)
-    {
-        $manager = self::getManager();
-
-        switch ($manager->getFactoryName()) {
-
-            case 'PhpRedis':
-                $class = PhpRedisChecksumStore::class;
-                break;
-
-            case 'Predis':
-                 $class = PredisChecksumStore::class;
-                 break;
-
-            default:
-                throw new \Exception(sprintf("Checksum implementation '%s' is not implemented", $manager->getFactoryName()));
-        }
-
-        if (!class_exists($class)) {
-            throw new \Exception(sprintf("Class '%s' does not exist", $class));
-        }
-
-        /** @var \MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface $impl */
-        return new $class($manager->getClient(), $bin, self::getDefaultPrefix($bin), false);
-    }
-
-    /**
-     * Get client manager
-     *
-     * @return StandaloneManager
-     */
-    static public function getManager()
-    {
-        global $conf;
-
-        if (null === self::$manager) {
-
-            $factory = self::createFactory(self::getClientInterfaceName());
-
-            // Build server list from conf
-            $serverList = [];
-            if (isset($conf['redis_servers'])) {
-                $serverList = $conf['redis_servers'];
-            }
-
-            if (empty($serverList) || !isset($serverList['default'])) {
-
-                // Backward configuration compatibility with older versions
-                $serverList[StandaloneManager::REALM_DEFAULT] = [];
-
-                foreach (array('host', 'port', 'base', 'password', 'socket') as $key) {
-                    if (isset($conf['redis_client_' . $key])) {
-                        $serverList[StandaloneManager::REALM_DEFAULT][$key] = $conf['redis_client_' . $key];
-                    }
-                }
-            }
-
-            self::$manager = new StandaloneManager($factory, $serverList);
-        }
-
-        return self::$manager;
-    }
-
-    /**
      * Get settings.php options for the given cache bin
      *
      * This method is public only for unit tests, do not use it.
@@ -309,6 +156,129 @@ class ClientFactory
         }
 
         return $options;
+    }
+
+    /**
+     * Create the redis client factory
+     *
+     * @return StandaloneFactoryInterface
+     */
+    static private function createFactory($clientName)
+    {
+        switch ($clientName) {
+
+            case 'phpredis':
+                $class = PhpRedisFactory::class;
+                break;
+
+            case 'predis':
+                $class = PredisFactory::class;
+                break;
+
+            default:
+                throw new \Exception(sprintf("Client '%s' not implemented", $clientName));
+        }
+
+        if (!class_exists($class)) {
+            throw new \Exception(sprintf("Class '%s' does not exist", $class));
+        }
+
+        return new $class();
+    }
+
+    /**
+     * Create the cache implementation depending on the asked factory
+     *
+     * @param string $bin
+     *
+     * @return StandaloneFactoryInterface
+     */
+    static private function createCacheImpl($bin)
+    {
+        $manager = self::getManager();
+
+        switch ($manager->getFactoryName()) {
+
+            case 'phpredis':
+                $class = PhpRedisCacheImpl::class;
+                break;
+
+            case 'Predis':
+                $class = PredisCacheImpl::class;
+                break;
+
+            default:
+                throw new \Exception(sprintf("Cache implementation '%s' is not implemented", $manager->getFactoryName()));
+        }
+
+        if (!class_exists($class)) {
+            throw new \Exception(sprintf("Class '%s' does not exist", $class));
+        }
+
+        /** @var \MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface $impl */
+        return new $class($manager->getClient(), $bin, self::getDefaultPrefix($bin), false);
+    }
+
+    /**
+     * Create the cache implementation depending on the asked factory
+     *
+     * @param string $bin
+     *
+     * @return StandaloneFactoryInterface
+     */
+    static private function createChecksumStoreImpl($bin)
+    {
+        $manager = self::getManager();
+
+        switch ($manager->getFactoryName()) {
+
+            case 'phpredis':
+                $class = PhpRedisChecksumStore::class;
+                break;
+
+            case 'Predis':
+                 $class = PredisChecksumStore::class;
+                 break;
+
+            default:
+                throw new \Exception(sprintf("Checksum implementation '%s' is not implemented", $manager->getFactoryName()));
+        }
+
+        if (!class_exists($class)) {
+            throw new \Exception(sprintf("Class '%s' does not exist", $class));
+        }
+
+        /** @var \MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface $impl */
+        return new $class($manager->getClient(), $bin, self::getDefaultPrefix($bin), false);
+    }
+
+    /**
+     * Get client manager
+     *
+     * @return StandaloneManager
+     */
+    static public function getManager()
+    {
+        global $conf;
+
+        if (null === self::$manager) {
+
+            // Build server list from conf
+            $serverList = [];
+            if (isset($conf['redis_servers'])) {
+                $serverList = $conf['redis_servers'];
+            }
+
+            // We need a default server, even if empty, it will inherit
+            // everyting from the default values
+            if (empty($serverList) || !isset($serverList['default'])) {
+                $serverList[StandaloneManager::REALM_DEFAULT] = [];
+            }
+
+            self::$manager = new StandaloneManager($serverList);
+        }
+
+        return self::$manager;
     }
 
     /**

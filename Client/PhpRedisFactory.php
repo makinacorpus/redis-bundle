@@ -77,6 +77,6 @@ class PhpRedisFactory implements StandaloneFactoryInterface
      */
     public function getName()
     {
-        return 'PhpRedis';
+        return 'phpredis';
     }
 }
