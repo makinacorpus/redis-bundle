@@ -20,6 +20,10 @@ bundle providing advanced component configurators and config builder.
  *  [Setup tutorial for Drupal 7](Resources/docs/drupal7.md)
  *  [Setup tutorial for Drupal 8](Resources/docs/drupal8.md)
 
+## Advanced topics
+
+ *  [Advanced cache behaviours](Resources/docs/cache-common.md)
+
 # Why another bundle ?
 
 We all know that the [SncRedisBundle](https://github.com/snc/SncRedisBundle)

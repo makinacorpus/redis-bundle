@@ -39,13 +39,14 @@ redis:
     default:
       host: tcp://1.2.3.4:6789/1
       type: phpredis
+      password: azerty123
       persistent: true
 
     # Connecting via a UNIX socket
     # --
     default:
       host: unix:///var/run/redis/socket
-      type: phpredis 
+      type: phpredis
 
     # Cluster mode
     # --
