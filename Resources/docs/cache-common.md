@@ -1,6 +1,6 @@
 # Common cache options and behaviours
 
-No matter the implementation you use, you manually do fine-grain tuning to
+No matter the implementation you use, you can manually do fine-grain tuning to
 cache backend behaviours.
 
 
@@ -54,12 +54,12 @@ options:
 
 If you switch from the standard default backend (without compression) to the
 compressed cache backend, it will recover transparently uncompressed data and
-proceed normally without additional cache eviction, it safe to upgrade.
+proceed normally without additional cache eviction, it is safe to upgrade.
 
 Donwgrading from compressed data to uncompressed data won't work, but the
-cache backend will just give you cache hit miss and it will work seamlessly
-too without any danger for your application, at the exception of a major
-slowdown the time needed for cache to warm-up.
+cache backend will just give you cache misses instead of loading the compressed
+items seamlessly without any danger for your application, at the exception of a
+major slowdown the time needed for cache to warm-up.
 
 
 # Sharding vs normal mode
@@ -93,15 +93,10 @@ options:
 Please note that the value 3 is there to keep backward compatibility with
 older versions of the Redis module and will not change.
 
-Note that previous Redis module version allowed to set a per-bin setting for
-the clear mode value; nevertheless the clear mode is not a valid setting
-anymore and the past issues have been resolved. Only the global value will
-work as of now.
-
 
 ## Sharding and pipelining
 
-Whe using this module with sharding mode you may have a sharding proxy able to
+When using this module with sharding mode you may have a sharding proxy able to
 do command pipelining. If that is the case, you should switch to "sharding with
 pipelining" mode instead:
 
@@ -126,23 +121,22 @@ there is no memory left on the machine.
 
 As a workaround, Redis can be configured as a LRU cache for both volatile or
 permanent items, which means it can behave like Memcache; Problem is that if
-you use Redis as a permanent storage for other business matters than this
-module you cannot possibly configure it to drop permanent items or you'll
-loose data.
+you use Redis as a permanent storage for other business matters than caching
+you cannot possibly configure it to drop permanent items or you'll loose data.
 
 This workaround allows you to explicity set a very long or configured default
 lifetime for permanent items (that would normally be permanent) which
 will mark them as being volatile in Redis storage engine: this then allows you
 to configure a LRU behavior for volatile keys without engaging the Redis server
 side configuration: this way you can still use Redis for business that needs
-data consistency without using any dangerous LRU mechanism; Cache items even if
-permament will be dropped when unused using this.
+data consistency without using any dangerous LRU mechanism on non-volatile keys;
+Cache items even if permament will be dropped when unused using this.
 
 Per default the TTL for permanent items will set to safe-enough value which is
 one year; No matter how Redis will be configured default configuration or lazy
-admin will inherit from a safe module behavior with zero-conf.
+admin will inherit from a safe module behaviour with zero-conf.
 
-For advanturous people, you can manage the TTL on a per bin basis and change
+For advanturous people, you can manage the TTL for each backend and change
 the default one:
 
 ```php
