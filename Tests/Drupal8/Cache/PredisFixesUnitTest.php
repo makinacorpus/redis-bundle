@@ -6,6 +6,6 @@ class PredisFixesUnitTest extends FixesUnitTest
 {
     protected function getClientInterface()
     {
-        return 'Predis';
+        return 'predis';
     }
 }

@@ -11,8 +11,17 @@ class StandaloneManagerTest extends AbstractConfigTest
     {
         $factory = new StandaloneFactoryMock();
 
-        // Factory has no sense here
-        $manager = new StandaloneManager($this->getConfigArray(), ['default' => $factory]);
+        // Factory has no sense here, and our fake factory will return its
+        // array configuration as the client, which will allows us to ensure
+        // that the whole configuration have been parsed, processed, and
+        // used correctly.
+        $manager = new StandaloneManager($this->getConfigArray(), [
+            'default'   => $factory,
+            'empty'     => $factory,
+            'null'      => $factory,
+            'multiple'  => $factory,
+            'geronimo'  => $factory,
+        ]);
 
         // Test simple client definition, and host when string is converted
         // to an array of Dsn instances

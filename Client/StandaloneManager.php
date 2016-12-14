@@ -97,13 +97,13 @@ class StandaloneManager
         foreach ($candidates as $candidate) {
             if (array_key_exists($candidate, $this->config)) {
                 if (!isset($this->config[$candidate]['type'])) {
-                    throw new \InvalidArgumentException(sprintf("redis realm %s does not define a type", $candidate));
+                    throw new \InvalidArgumentException(sprintf("realm '%s' does not define a type", $candidate));
                 }
                 return $this->config[$candidate]['type'];
             }
         }
 
-        throw new \InvalidArgumentException(sprintf("could not find configuration for realm %s", $candidate));
+        throw new \InvalidArgumentException(sprintf("could not find configuration for realm '%s'", $candidate));
     }
 
     /**

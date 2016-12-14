@@ -203,7 +203,7 @@ class ClientFactory
                 $class = PhpRedisCacheImpl::class;
                 break;
 
-            case 'Predis':
+            case 'predis':
                 $class = PredisCacheImpl::class;
                 break;
 
@@ -236,7 +236,7 @@ class ClientFactory
                 $class = PhpRedisChecksumStore::class;
                 break;
 
-            case 'Predis':
+            case 'predis':
                  $class = PredisChecksumStore::class;
                  break;
 

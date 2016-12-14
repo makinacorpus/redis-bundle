@@ -10,7 +10,7 @@ class PredisShardedFixesUnitTest extends FixesUnitTest
     {
         $GLOBALS['conf']['redis_flush_mode'] = CacheBackend::FLUSH_SHARD;
 
-        return 'Predis';
+        return 'predis';
     }
 
     protected function getDsnTarget()

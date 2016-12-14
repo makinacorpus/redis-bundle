@@ -82,6 +82,6 @@ class PredisFactory implements StandaloneFactoryInterface
      */
     public function getName()
     {
-        return 'Predis';
+        return 'predis';
     }
 }

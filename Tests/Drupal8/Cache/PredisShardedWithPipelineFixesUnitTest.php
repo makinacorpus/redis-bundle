@@ -10,7 +10,7 @@ class PredisShardedWithPipelineFixesUnitTest extends FixesUnitTest
     {
         $GLOBALS['conf']['redis_flush_mode'] = CacheBackend::FLUSH_SHARD_WITH_PIPELINING;
 
-        return 'Predis';
+        return 'predis';
     }
 
     protected function getDsnTarget()
