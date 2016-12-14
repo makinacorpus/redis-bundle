@@ -10,15 +10,13 @@ class EntryHydrator
      * @param string $cid
      * @param mixed $data
      * @param int $expire
-     * @param string[] $tags
      *
      * @return array
      */
-    public function create($cid, $data, $checksum, $expire, array $tags = [])
+    public function create($cid, $data, $checksum, $expire)
     {
         $hash = [
             'cid'     => $cid,
-            'tags'    => implode(',', $tags),
             'created' => $checksum,
             'expire'  => $expire,
             'valid'   => 1,
@@ -49,17 +47,13 @@ class EntryHydrator
     {
         $entry = (object)$values;
 
-        // Reduce the checksum to the real timestamp part
+        // Reduce the checksum to the real timestamp part for the API that
+        // will use our own code, all consistency checks have already been
+        // done from this point
         $entry->created = (int)$entry->created;
 
         if ($entry->serialized) {
             $entry->data = unserialize($entry->data);
-        }
-
-        if (empty($entry->tags)) {
-            $entry->tags = [];
-        } else{
-            $entry->tags = explode(',', $entry->tags);
         }
 
         return $entry;

@@ -4,6 +4,10 @@ namespace MakinaCorpus\RedisBundle\Checksum;
 
 /**
  * Default checksum validator implementation
+ *
+ * Beware that a few functions are not atomic, they might have unexpected
+ * behaviours under concurrency scenarios. This is something to fix in the
+ * underlaying implementations, but will make them a lot more complex.
  */
 final class ChecksumValidator implements ChecksumValidatorInterface
 {

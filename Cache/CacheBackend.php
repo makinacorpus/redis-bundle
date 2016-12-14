@@ -8,12 +8,15 @@ use MakinaCorpus\RedisBundle\Cache\Impl\EntryHydrator;
 use MakinaCorpus\RedisBundle\Checksum\ChecksumValidatorInterface;
 
 /**
- * Because those objects will be spawned during boostrap all its configuration
- * must be set in the settings.php file.
+ * Cache backend implementation.
  *
- * You will find the driver specific implementation in the Redis_Cache_*
- * classes as they may differ in how the API handles transaction, pipelining
- * and return values.
+ * This is rather complex, but feature-complete, it brings altogether a common
+ * set of features that satisfies:
+ *
+ *  - Doctrine cache
+ *  - Drupal 7
+ *  - Drupal 8
+ *  - PSR-6
  */
 class CacheBackend
 {
@@ -24,8 +27,8 @@ class CacheBackend
     const ITEM_IS_PERMANENT = 0;
 
     /**
-     * Cache item is temporary, its expiry time is computed from this backend
-     * configuration, and item might be loaded as invalid if asked for.
+     * Cache item is temporary, its expiry time is computed from the default
+     * 'cache_lifetime' options set in the backend at construct time.
      */
     const ITEM_IS_VOLATILE = -1;
 
@@ -72,6 +75,35 @@ class CacheBackend
     const KEY_THRESHOLD = 20;
 
     /**
+     * Checksum identifier for full namespace flush
+     */
+    const CHECKSUM_ALL = 'flush';
+
+    /**
+     * Checksum identifier for full namespace invalidation
+     */
+    const CHECKSUM_INVALID = 'valid';
+
+    /**
+     * Checksum identifier for volatile item flush
+     */
+    const CHECKSUM_VOLATILE = 'volatile';
+
+    /**
+     * This may be returned by the expandEntry() method, it means that item
+     * is invalid, but may not be deleted because it's valid to keep an
+     * invalid item (it could be explicitely fetched).
+     */
+    const ENTRY_IS_INVALID = 1;
+
+    /**
+     * This may be returned by the expandEntry() method, it means that item
+     * must be deleted because it has been explicitely flushed prior to the
+     * get call, this should happen only with sharded environments.
+     */
+    const ENTRY_SHOULD_BE_DELETED = 2;
+
+    /**
      * @var CacheImplInterface
      */
     private $backend;
@@ -97,16 +129,6 @@ class CacheBackend
      * @var mixed[]
      */
     private $options = [];
-
-    /**
-     * When the global 'cache_lifetime' Drupal variable is set to a value, the
-     * cache backends should not expire temporary entries by themselves per
-     * Drupal signature. Volatile items will be dropped accordingly to their
-     * set lifetime.
-     *
-     * @var boolean
-     */
-    private $allowTemporaryFlush = true;
 
     /**
      * Does this instance will check tags on load
@@ -149,15 +171,6 @@ class CacheBackend
     private $maxTtl = 0;
 
     /**
-     * Flush permanent and volatile cached values
-     *
-     * @var string[]
-     *   First value is permanent latest flush time and second value
-     *   is volatile latest flush time
-     */
-    private $flushCache = null;
-
-    /**
      * Is this bin in shard mode
      *
      * @return boolean
@@ -175,16 +188,6 @@ class CacheBackend
     public function allowPipeline()
     {
         return $this->allowPipeline;
-    }
-
-    /**
-     * Does this bin allow temporary item flush
-     *
-     * @return boolean
-     */
-    public function allowTemporaryFlush()
-    {
-        return $this->allowTemporaryFlush;
     }
 
     /**
@@ -292,13 +295,6 @@ class CacheBackend
      */
     private function refreshCapabilities()
     {
-        if (0 < $this->options['cache_lifetime']) {
-            // Per Drupal default behavior, when the 'cache_lifetime' variable
-            // is set we must not flush any temporary items since they have a
-            // life time.
-            $this->allowTemporaryFlush = false;
-        }
-
         if ($this->options['compression']) {
             $this->entryHydrator = new CompressedEntryHydrator((int)$this->options['compression_threshold']);
         } else {
@@ -352,23 +348,6 @@ class CacheBackend
     }
 
     /**
-     * Set last flush time
-     *
-     * @param string $permanent
-     * @param string $volatile
-     */
-    public function setLastFlushTime($permanent = false, $volatile = false)
-    {
-        // Here we need to fetch absolute values from backend, to avoid
-        // concurrency problems and ensure data validity.
-        if ($permanent) {
-            $this->checksumValidator->invalidateAllChecksums(['permanent', 'volatile']);
-        } else if ($volatile) {
-            $this->checksumValidator->invalidateChecksum('volatile');
-        }
-    }
-
-    /**
      * Create cache entry
      *
      * @param string $cid
@@ -381,16 +360,22 @@ class CacheBackend
     protected function createEntryHash($cid, $data, $expire = self::ITEM_IS_PERMANENT, array $tags = [])
     {
         if (self::ITEM_IS_VOLATILE === $expire) {
-            $checksum = $this->checksumValidator->getValidChecksumFor(['permanent', 'volatile']);
+            $checksumIdList = [self::CHECKSUM_ALL, self::CHECKSUM_INVALID, self::CHECKSUM_VOLATILE];
         } else {
-            $checksum = $this->checksumValidator->getValidChecksum('permanent');
+            $checksumIdList = [self::CHECKSUM_ALL, self::CHECKSUM_INVALID];
         }
 
+        $checksum = $this->checksumValidator->getValidChecksumFor($checksumIdList);
         $values = $this->entryHydrator->create($cid, $data, $checksum, $expire, $tags);
+
+        // We need to handle tags from this code, entry hydrators should not
+        // care about tags since it's only for data consistency and not for
+        // other business purpose.
+        $values['tags'] = implode(',', $tags);
 
         if ($tags) {
             if ($this->allowTagsUsage) {
-                $values['checksum'] = $this->tagValidator->getValidChecksumFor($tags);
+                $values['tags_checksum'] = $this->tagValidator->getValidChecksumFor($tags);
             } else {
                 trigger_error("using tags on a backend that does not supports it", E_DEPRECATED);
             }
@@ -412,42 +397,55 @@ class CacheBackend
     {
         // Check for entry being valid.
         if (empty($values['cid'])) {
-            return;
+            return self::ENTRY_IS_INVALID;
         }
 
-        // Shortcut invalid entries
-        if (isset($values['valid'])) {
-            if (!$values['valid'] && !$allowInvalid) {
-                return false;
+        $values += ['valid' => 1, 'volatile' => 0, 'compressed' => 0, 'tags' => ''];
+
+        // Ensure that tags is always an array
+        $values['tags'] = $values['tags'] ? explode(',', $values['tags']) : [];
+
+        // Any items that predates the latest flush, no matter it's being
+        // volatile or not, should be dropped, this would happen only in
+        // scenarios where it's sharded in theory, but data may stall at
+        // some point
+        if (!$this->checksumValidator->isChecksumValid(self::CHECKSUM_ALL, $values['created'])) {
+            return self::ENTRY_SHOULD_BE_DELETED;
+        }
+
+        // Any item that predates the latest global invalidation is considered
+        // as invalid, but should not be deleted because the user might asked
+        // explicitely for invalid items to be allowed.
+        if (!$this->checksumValidator->isChecksumValid(self::CHECKSUM_ALL, $values['created'])) {
+            $values['valid'] = 0;
+        }
+
+        // Check for invalid entries
+        if (!$allowInvalid && !$values['valid']) {
+            return self::ENTRY_IS_INVALID;
+        }
+
+        // Check for volatile item validity.
+        if ($values['volatile'] && !$this->checksumValidator->isChecksumValid(self::CHECKSUM_VOLATILE, $values['created'])) {
+            return self::ENTRY_SHOULD_BE_DELETED;
+        }
+
+        // And now deal with tags, if tagging is enabled.
+        if ($values['tags']) {
+
+            // This entry can be incomplete, and cannot be processed, it would
+            // be considered as broken and should be deleted?
+            if (empty($values['tags_checksum'])) {
+                return self::ENTRY_SHOULD_BE_DELETED;
             }
-        } else {
-            $values['valid'] = 1;
-        }
 
-        // Ensure the entry does not predate the last flush time.
-        $isCreatedValid = false;
-        if ($allowInvalid || ($this->allowTemporaryFlush && !empty($values['volatile']))) {
-            $isCreatedValid = $this->checksumValidator->areChecksumsValid(['permanent', 'volatile'], $values['created']);
-        } else {
-            $isCreatedValid = $this->checksumValidator->isChecksumValid('permanent', $values['created']);
-        }
-
-        if (!$isCreatedValid) {
-            return false;
-        }
-
-        $entry = $this->entryHydrator->expand($values);
-
-        // If invalid entries are allowed, just make it pass, and benefit at
-        // this point from NOT loading the tags checksum, avoiding precious
-        // Redis round-trips
-        if ($entry->tags) {
-            if (!$entry->checksum) {
-                return false;
-            } else if ($this->allowTagsUsage) {
+            // This will not check for tags if invalid entries are allowed
+            // avoiding previous Redis roundtrips to fetch the various tags
+            // checksums.
+            if ($this->allowTagsUsage) {
                 if (!$allowInvalid) {
-                    if (!$this->tagValidator->areChecksumsValid($entry->tags, $entry->checksum)) {
-                        return false;
+                    if (!$this->tagValidator->areChecksumsValid($values['tags'], $values['tags_checksum'])) {
+                        return self::ENTRY_IS_INVALID;
                     }
                 }
             } else {
@@ -455,7 +453,7 @@ class CacheBackend
             }
         }
 
-        return $entry;
+        return $this->entryHydrator->expand($values);
     }
 
     /**
@@ -472,13 +470,6 @@ class CacheBackend
      */
     public function get($cid, $allowInvalid = false)
     {
-        // If the current cache backend allows temporary flush globally this
-        // means there is no default temporary item cache life time configured
-        // case in which we should not allow temporary items to be fetched.
-        if (null === $allowInvalid) {
-            $allowInvalid = !$this->allowTemporaryFlush();
-        }
-
         $values = $this->backend->get($cid);
 
         if (empty($values)) {
@@ -487,12 +478,15 @@ class CacheBackend
 
         $entry = $this->expandEntry($values, $allowInvalid);
 
-        if (!$entry) { // This entry exists but is invalid.
-            $this->backend->delete($cid);
-            return false;
+        if (is_object($entry)) {
+            return $entry;
         }
 
-        return $entry;
+        if (self::ENTRY_SHOULD_BE_DELETED === $entry) {
+            $this->backend->delete($cid);
+        }
+
+        return false;
     }
 
     /**
@@ -511,13 +505,6 @@ class CacheBackend
      */
     public function getMultiple(&$cids, $allowInvalid = false)
     {
-        // If the current cache backend allows temporary flush globally this
-        // means there is no default temporary item cache life time configured
-        // case in which we should not allow temporary items to be fetched.
-        if (null === $allowInvalid) {
-            $allowInvalid = !$this->allowTemporaryFlush();
-        }
-
         $ret    = array();
         $delete = array();
 
@@ -533,20 +520,27 @@ class CacheBackend
         }
 
         foreach ($cids as $key => $cid) {
+            $entry = null;
+
             if (!empty($entries[$cid])) {
                 $entry = $this->expandEntry($entries[$cid], $allowInvalid);
-            } else {
-                $entry = null;
             }
-            if (empty($entry)) {
-                $delete[] = $cid;
-            } else {
+
+            if (is_object($entry)) {
                 $ret[$cid] = $entry;
                 unset($cids[$key]);
+
+                // Normal runtime, we got a valid entry and we are going to
+                // just return it.
+                continue;
+            }
+
+            if (self::ENTRY_SHOULD_BE_DELETED === $entry) {
+                $delete[] = $cid;
             }
         }
 
-        if (!empty($delete)) {
+        if ($delete) {
             if ($this->allowPipeline) {
                 foreach ($delete as $id) {
                     $this->backend->delete($id);
@@ -570,11 +564,8 @@ class CacheBackend
         switch ($expire) {
 
             case self::ITEM_IS_PERMANENT:
-                $this->backend->set($cid, $hash, $maxTtl, false);
-                break;
-
             case self::ITEM_IS_VOLATILE:
-                $this->backend->set($cid, $hash, $maxTtl, true);
+                $this->backend->set($cid, $hash, $maxTtl, ($expire == self::ITEM_IS_VOLATILE));
                 break;
 
             default:
@@ -614,7 +605,7 @@ class CacheBackend
                 $item = ['data' => $item];
             }
 
-            $item += ['expire'  => self::ITEM_IS_PERMANENT, 'tags' => []];
+            $item += ['expire' => self::ITEM_IS_PERMANENT, 'tags' => []];
 
             $this->set($cid, $item['data'], $item['expire'], $item['tags']);
         }
@@ -656,11 +647,14 @@ class CacheBackend
     public function deleteByPrefix($prefix)
     {
         if ($this->isSharded) {
-            // @todo
-            //   This needs a map algorithm the same way the Drupal memcache
-            //   module implemented it for invalidity by prefixes. This is a
-            //   very stupid fallback which will delete everything
-            $this->setLastFlushTime(true);
+            // When working with sharded environments, we cannot delete entries
+            // by prefix because it would force a scan over all the existing
+            // keys, since they are dispatched on multiple servers, it's not
+            // possible to do it.
+            // This feature always been rather stupid anyway, cache tags usage
+            // and namespacing are way better.
+            $this->checksumValidator->invalidateChecksum(self::CHECKSUM_ALL);
+
         } else {
             $this->backend->deleteByPrefix($prefix);
         }
@@ -671,16 +665,30 @@ class CacheBackend
      */
     public function flush()
     {
+          $this->checksumValidator->invalidateChecksum(self::CHECKSUM_ALL);
+
           if (!$this->isSharded) {
-              // Do not flush temporary items from this call, only invalidate
-              // them so the caller can still load something, in case of heavy
-              // load
-              $this->setLastFlushTime(true);
-          } else {
               // When the backend is allowed to use LUA EVAL command, we will
               // remove everything from the cache, no matter there are invalid
               // items that could be loaded or not
               $this->backend->flush();
+        }
+    }
+
+    /**
+     * Clear all the volatile items from this cache
+     *
+     * Volatile items are an heritage from Drupal 7,
+     */
+    public function flushVolatile()
+    {
+          $this->checksumValidator->invalidateChecksum(self::CHECKSUM_VOLATILE);
+
+          if (!$this->isSharded) {
+              // When the backend is allowed to use LUA EVAL command, we will
+              // remove everything from the cache, no matter there are invalid
+              // items that could be loaded or not
+              $this->backend->flushVolatile();
         }
     }
 
@@ -728,12 +736,10 @@ class CacheBackend
      */
     public function invalidateAll()
     {
-        if (true || $this->isSharded) {
-            // Just normally flush, invalid entries will be allowed naturally
-            // following the latest volatile flush
-            $this->setLastFlushTime(true);
-        } else {
-            // @todo should it be implemented using eval too?
+        $this->checksumValidator->invalidateChecksum(self::CHECKSUM_INVALID);
+
+        if (!$this->isSharded) {
+            $this->backend->invalidateAll();
         }
     }
 
@@ -749,43 +755,7 @@ class CacheBackend
             return;
         }
 
-        $this->tagValidator->invalidate($tags);
-    }
-
-    /**
-     * Please, do not use this method, it only reflects Drupal 7's API, it for
-     * convenience reasons kept here for now.
-     *
-     * @deprecated
-     * @internal
-     */
-    public function clear($cid = null, $wildcard = false)
-    {
-        if (null === $cid && !$wildcard) {
-            // Drupal asked for volatile entries flush, this will happen
-            // during cron run, mostly for invalidating the 'page' and 'block'
-            // cache bins.
-            $this->setLastFlushTime(false, true);
-
-            if (!$this->isSharded && $this->allowTemporaryFlush) {
-                $this->backend->flushVolatile();
-            }
-        } else if ($wildcard) {
-            if (empty($cid)) {
-                // This seems to be an error, just do nothing.
-                return;
-            }
-
-            if ('*' === $cid) {
-                $this->flush();
-            } else {
-                $this->deleteByPrefix($cid);
-            }
-        } else if (is_array($cid)) {
-            $this->deleteMultiple($cid);
-        } else {
-            $this->delete($cid);
-        }
+        $this->tagValidator->invalidateAllChecksums($tags);
     }
 
     /**

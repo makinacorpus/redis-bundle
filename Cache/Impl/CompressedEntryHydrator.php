@@ -22,9 +22,9 @@ class CompressedEntryHydrator extends EntryHydrator
     /**
      * {@inheritdoc}
      */
-    public function create($cid, $data, $checksum, $expire, array $tags = [])
+    public function create($cid, $data, $checksum, $expire)
     {
-        $hash = parent::create($cid, $data, $checksum, $expire, $tags);
+        $hash = parent::create($cid, $data, $checksum, $expire);
 
         // Empiric level when compression makes sense.
         if (!$this->sizeThreshold || strlen($hash['data']) > $this->sizeThreshold) {

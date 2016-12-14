@@ -101,6 +101,21 @@ abstract class AbstractCacheTest extends AbstractClientTest
     }
 
     /**
+     * Get arbitrary data to store
+     */
+    final protected function getArbitraryData($min = 100, $max = 30000)
+    {
+        $ret = '';
+        $size = rand($min, $max);
+
+        for ($i = 0; $i < $size; ++$i) {
+            $ret .= chr(rand(0, 255));
+        }
+
+        return $ret;
+    }
+
+    /**
      * Get cache backend without flushing it first
      *
      * @param string $namespace

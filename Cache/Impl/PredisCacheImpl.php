@@ -130,6 +130,18 @@ class PredisCacheImpl extends AbstractCacheImpl
     /**
      * {@inheritdoc}
      */
+    public function invalidateAll()
+    {
+        $client = $this->getClient();
+        $ret = $client->eval(self::EVAL_INVALIDATE_PREFIX, 0, $this->getKey('*'));
+        if (1 != $ret) {
+            trigger_error(sprintf("EVAL failed: %s", $client->getLastError()), E_USER_ERROR);
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function flush()
     {
         $client = $this->getClient();

@@ -38,4 +38,15 @@ for i, k in ipairs(keys) do
 end
 return 1
 EOT;
+
+    /**
+     * Delete volatile by prefix lua script
+     */
+    const EVAL_INVALIDATE_PREFIX = <<<EOT
+local keys = redis.call('KEYS', ARGV[1])
+for i, k in ipairs(keys) do
+    redis.call("HSET", k, "valid", 0)
+end
+return 1
+EOT;
 }

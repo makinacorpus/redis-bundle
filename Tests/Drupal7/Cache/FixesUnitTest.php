@@ -21,68 +21,80 @@ abstract class FixesUnitTest extends AbstractCacheTest
     }
 
     /**
-     * Drupal 7 goes with variables
-     *
      * {@inheritdoc}
      */
     protected function getBackend($namespace = null, array $options = null)
     {
+        return $this->getDrupalBackend()->getNestedCacheBackend();
+    }
+
+    /**
+     * Get Drupal 7 backend
+     *
+     * @param string $namespace
+     * @param mixed[] $options
+     *
+     * @return RedisCacheBackend
+     */
+    protected function getDrupalBackend($namespace = null, array $options = null)
+    {
         $namespace = $this->computeClientNamespace($namespace, $options);
 
-        return (new RedisCacheBackend($namespace))->getNestedCacheBackend();
+        return (new RedisCacheBackend($namespace));
     }
 
     public function testTemporaryCacheExpire()
     {
-        $backend = $this->getBackend();
+        $backend = $this->getDrupalBackend();
+        $realBackend = $backend->getNestedCacheBackend();
 
         // Permanent entry.
         $backend->set('test1', 'foo', CacheBackend::ITEM_IS_PERMANENT);
         $data = $backend->get('test1');
-        $this->assertNotEquals(false, $data);
+        $this->assertNotFalse($data);
         $this->assertSame('foo', $data->data);
 
         // Permanent entries should not be dropped on clear() call.
         $backend->clear();
         $data = $backend->get('test1');
-        $this->assertNotEquals(false, $data);
+        $this->assertNotFalse($data);
         $this->assertSame('foo', $data->data);
 
         // Expiring entry with permanent default lifetime.
-        $this->alterOptions($backend, ['cache_lifetime' =>  0]);
+        $this->alterOptions($realBackend, ['cache_lifetime' =>  0]);
         $backend->set('test2', 'bar', CacheBackend::ITEM_IS_VOLATILE);
         sleep(2);
         $data = $backend->get('test2');
-        $this->assertNotEquals(false, $data);
+        $this->assertNotFalse($data);
         $this->assertSame('bar', $data->data);
         sleep(2);
         $data = $backend->get('test2');
-        $this->assertNotEquals(false, $data);
+        $this->assertNotFalse($data);
         $this->assertSame('bar', $data->data);
 
         // Expiring entry with negative lifetime.
         $backend->set('test3', 'baz', time() - 100);
         $data = $backend->get('test3');
-        $this->assertEquals(false, $data);
+        $this->assertFalse($data);
 
         // Expiring entry with short lifetime.
         $backend->set('test4', 'foobar', time() + 2);
         $data = $backend->get('test4');
-        $this->assertNotEquals(false, $data);
+        $this->assertNotFalse($data);
         $this->assertSame('foobar', $data->data);
         sleep(4);
         $data = $backend->get('test4');
-        $this->assertEquals(false, $data);
+        $this->assertFalse($data);
 
         // Expiring entry with short default lifetime.
-        $this->alterOptions($backend, ['cache_lifetime' =>  1]);
+        $this->alterOptions($realBackend, ['cache_lifetime' =>  1]);
         $backend->set('test5', 'foobaz', CacheBackend::ITEM_IS_VOLATILE);
         $data = $backend->get('test5');
-        $this->assertNotEquals(false, $data);
+        $this->assertNotFalse($data);
         $this->assertSame('foobaz', $data->data);
         sleep(3);
         $data = $backend->get('test5');
-        $this->assertEquals(false, $data);
+        $this->assertFalse($data);
     }
 
     public function testDefaultPermTtl()
@@ -110,12 +122,12 @@ abstract class FixesUnitTest extends AbstractCacheTest
 
     public function testGetMultiple()
     {
-        $backend = $this->getBackend();
+        $backend = $this->getDrupalBackend();
 
-        $backend->set('multiple1', 1);
-        $backend->set('multiple2', 2);
-        $backend->set('multiple3', 3);
-        $backend->set('multiple4', 4);
+        $backend->set('multiple1', $this->getArbitraryData());
+        $backend->set('multiple2', $this->getArbitraryData());
+        $backend->set('multiple3', $this->getArbitraryData());
+        $backend->set('multiple4', $this->getArbitraryData());
 
         $cidList = array('multiple1', 'multiple2', 'multiple3', 'multiple4', 'multiple5');
         $ret = $backend->getMultiple($cidList);
@@ -139,8 +151,9 @@ abstract class FixesUnitTest extends AbstractCacheTest
     {
         // This also testes string parsing. Not fully, but at least one case.
         variable_set('redis_perm_ttl', "2 seconds");
-        $backend = $this->getBackend();
-        $this->assertSame(2, $backend->getPermTtl());
+        $backend = $this->getDrupalBackend();
+        $realBackend = $backend->getNestedCacheBackend();
+        $this->assertSame(2, $realBackend->getPermTtl());
 
         $backend->set('test6', 'cats are mean');
         $this->assertSame('cats are mean', $backend->get('test6')->data);
@@ -152,7 +165,7 @@ abstract class FixesUnitTest extends AbstractCacheTest
 
     public function testClearAsArray()
     {
-        $backend = $this->getBackend();
+        $backend = $this->getDrupalBackend();
 
         $backend->set('test7', 1);
         $backend->set('test8', 2);
@@ -170,7 +183,7 @@ abstract class FixesUnitTest extends AbstractCacheTest
 
     public function testGetMultipleAlterCidsWhenCacheHitsOnly()
     {
-        $backend = $this->getBackend();
+        $backend = $this->getDrupalBackend();
         $backend->clear('*', true); // It seems that there are leftovers.
 
         $backend->set('mtest1', 'pouf');

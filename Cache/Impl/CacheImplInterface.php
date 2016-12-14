@@ -67,7 +67,8 @@ interface CacheImplInterface extends RedisAwareInterface
     /**
      * Mark a single item as being invalid
      *
-     * This method should add the 'invalid' property on the hash if exists
+     * This method should add the 'valid' property on the hash if exists
+     * and set it to 0 for selected items.
      *
      * @param string $id
      */
@@ -76,11 +77,20 @@ interface CacheImplInterface extends RedisAwareInterface
     /**
      * Mark a set of items as being invalid
      *
-     * This method should add the 'invalid' property on the hashes if exists
+     * This method should add the 'valid' property on the hash if exists
+     * and set it to 0 for selected items.
      *
      * @param string[] $idList
      */
     public function invalidateMultiple(array $idList);
+
+    /**
+     * Mark all items as being invalid
+     *
+     * This method should add the 'valid' property on the hash if exists
+     * and set it to 0 for selected items.
+     */
+    public function invalidateAll();
 
     /**
      * Flush all entries

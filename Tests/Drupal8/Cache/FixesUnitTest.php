@@ -357,7 +357,6 @@ abstract class FixesUnitTest extends AbstractCacheTest
         $this->assertNotEmpty($backendB->get('test3'));
     }
 
-    /*
     public function testInvalidate()
     {
         $backend = new RedisCacheBackend($this->getBackend());
@@ -395,9 +394,8 @@ abstract class FixesUnitTest extends AbstractCacheTest
 
         // Calling invalidateMultiple() with an empty array should not cause an
         // error.
-        $this->assertFalse($backend->invalidateMultiple([]));
+        $backend->invalidateMultiple([]);
     }
-     */
 
     public function testInvalidateTags()
     {

@@ -10,6 +10,9 @@ use MakinaCorpus\RedisBundle\RedisAwareTrait;
  * This implementation uses a HASH to store everything, all operations are
  * atomic thanks to Redis API, except the deleteAll() operation since there
  * is no HMDEL command.
+ *
+ * This also means that if you loose one of those keys due to Redis LRU
+ * mechanism, you will loose all your checksums and everything will go invalid.
  */
 class PredisChecksumStore implements ChecksumStoreInterface, RedisAwareInterface
 {

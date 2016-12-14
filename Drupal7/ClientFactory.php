@@ -316,7 +316,7 @@ class ClientFactory
      *
      * @param string $bin
      *
-     * @return CacheImplInterface
+     * @return CacheBackend
      */
     static public function createCacheBackend($bin)
     {
