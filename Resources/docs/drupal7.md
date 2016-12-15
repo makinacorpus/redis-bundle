@@ -13,8 +13,7 @@ mode, which will work transparently on non-sharded environments.
 
 ## Install with Composer
 
-If your Drupal 7 site installation is composer-based, there is nothing easier
-than installing it:
+If your Drupal 7 site installation is composer-based:
 
 ```sh
 composer require makinacorpus/redis-bundle
@@ -25,14 +24,30 @@ composer require makinacorpus/redis-bundle
 Manually download a packaged version and unpack it anywhere in your PHP
 include path. For it to work, Drupal needs to be able to autload the package
 classes, ensure that the provided ``drupal7.autoload.php`` file provided
-by this package is loaded correctly, by adding into your ``settings.php`` file:
+by this package is loaded correctly
+
+
+### When redis-bundle is inside the Drupal webroot
+
+by adding into your ``settings.php`` file:
 
 ```php
-$conf\['cache_backends'][] = '/path/to/redis-bundle/Resources/helper/drupal7.autoload.php';
+$conf\['cache_backends'][] = 'path/to/redis-bundle/Resources/helper/drupal7.autoload.php';
 ```
 
 This will force Drupal to load this file during the bootstrap phase, which will
 register a custom autoloader for this package namespace.
+
+
+### When redis-bundle is outside the Drupal webroot
+
+If you did not extract the package inside Drupal root, you will need to include
+the file manually instead of letting Drupal do it (Drupal always load PHP files
+relative to its own index.php file) - you can set in your ``settings.php`` file:
+
+```php
+require_once '/absolute/path/to/redis-bundle/Resources/helper/drupal7.autoload.php';
+```
 
 ## Quick setup
 
