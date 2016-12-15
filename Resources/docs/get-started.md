@@ -16,7 +16,7 @@ If you want to use `phpredis` client library, proceeed with
 First use this component as dependency in your application:
 
 ```bash
-composer require makina-corpus/redis-bundle
+composer require makinacorpus/redis-bundle
 ```
 
 @todo standalone manager configuration

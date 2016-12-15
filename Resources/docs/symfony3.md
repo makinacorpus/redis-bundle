@@ -5,7 +5,7 @@
 First install and register this bundle:
 
 ```bash
-composer require makina-corpus/redis-bundle
+composer require makinacorpus/redis-bundle
 ```
 
 Then the RedisBundle to your application kernel:

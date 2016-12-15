@@ -17,7 +17,7 @@ If your Drupal 7 site installation is composer-based, there is nothing easier
 than installing it:
 
 ```sh
-composer require makina-corpus/redis-bundle
+composer require makinacorpus/redis-bundle
 ```
 
 ## Install without Composer
