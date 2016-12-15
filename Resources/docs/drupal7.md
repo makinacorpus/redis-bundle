@@ -25,10 +25,10 @@ composer require makinacorpus/redis-bundle
 Manually download a packaged version and unpack it anywhere in your PHP
 include path. For it to work, Drupal needs to be able to autload the package
 classes, ensure that the provided ``drupal7.autoload.php`` file provided
-by this package is loaded correctly, by adding into your settings.php file:
+by this package is loaded correctly, by adding into your ``settings.php`` file:
 
 ```php
-$conf['cache_backends'][] = '/path/to/redis-bundle/Resources/helper/drupal7.autoload.php';
+$conf\['cache_backends'][] = '/path/to/redis-bundle/Resources/helper/drupal7.autoload.php';
 ```
 
 This will force Drupal to load this file during the bootstrap phase, which will
@@ -75,16 +75,60 @@ Using Drupal 7 you should probably look deeper in the following options:
  *  sharding abilities;
  *  remote entries compression.
 
-@todo variable in settings.php file
+For example, if you want to activate the sharding mode and compression on cache
+backend, you would set the following options:
+
+```php
+$options = [
+  'compression' => 1,
+  'flush_mode'  => 3,
+  'perm_ttl'    => "1 months",
+];
+```
+
+If you want this to be a global behaviour, set the following ``settings.php``
+variable:
+
+```php
+$conf\['redis_cache_options']['default'] = [
+  'compression' => 1,
+  'flush_mode'  => 3,
+  'perm_ttl'    => "1 months",
+];
+```
+
+Additionnaly, you can overrides options on a per-bin basis, by changing the
+``default`` key to the bin name. Don't forget that in Drupal 7, all bins names
+are suffixed with ``cache_``:
+
+```php
+// Set default options for all cache backends
+$conf\['redis_cache_options']['default'] = [
+  'compression' => 1,
+  'flush_mode'  => 3,
+  'perm_ttl'    => "1 months",
+];
+
+// Disallow sharding and compression on the 'cache_bootstrap' bin but keep the
+// default 'perm_ttl' defined upper:
+$conf\['redis_cache_options']['cache_bootstrap'] = [
+  'compression' => 0,
+  'flush_mode'  => 0,
+];
+```
+
+Backend specific options will inherit from the ``default`` if defined, which
+means that options that you leave unspecified in a specific bin definition will
+fetch values from the defaults you defined aside.
 
 
 ## Tell Drupal to use the cache backend
 
-Usual cache backend configuration, as follows, to add into your settings.php
+Usual cache backend configuration, as follows, to add into your ``settings.php``
 file like any other backend:
 
 ```php
-$conf['cache_backends'][]            = 'sites/all/modules/redis/redis.autoload.inc';
+$conf\['cache_backends'][]            = 'sites/all/modules/redis/redis.autoload.inc';
 $conf['cache_class_cache']           = '\\MakinaCorpus\\RedisBundle\\Drupal7\\RedisCacheBackend';
 $conf['cache_class_cache_menu']      = '\\MakinaCorpus\\RedisBundle\\Drupal7\\RedisCacheBackend';
 $conf['cache_class_cache_bootstrap'] = '\\MakinaCorpus\\RedisBundle\\Drupal7\\RedisCacheBackend';
@@ -96,7 +140,7 @@ $conf['cache_class_cache_bootstrap'] = '\\MakinaCorpus\\RedisBundle\\Drupal7\\Re
 
 **Not implemented yet!**
 
-Usual lock backend override, update you settings.php file as this:
+Usual lock backend override, update you ``settings.php`` file as this:
 
   $conf['lock_inc'] = 'sites/all/modules/redis/redis.lock.inc';
 
@@ -132,7 +176,7 @@ Per default, Redis ships the database "0". All default connections will be use
 this one if nothing is specified.
 
 Depending on you OS or OS distribution, you might have numerous database. To
-use one in particular, just add to your settings.php file:
+use one in particular, just add to your ``settings.php`` file:
 
 ```php
 $conf['redis_client_base'] = 12;
@@ -183,7 +227,7 @@ Alternatively, to provide the same functionality, you can provide the variable
 as an array:
 
 ```php
-$conf['cache_prefix']['default'] = 'mysite_';
+$conf\['cache_prefix']['default'] = 'mysite_';
 ```
 
 This allows you to provide different prefix depending on the bin name. Common
@@ -200,14 +244,14 @@ Here is a complex sample:
 
 ```php
 // Default behavior for all bins, prefix is 'mysite_'.
-$conf['cache_prefix']['default'] = 'mysite_';
+$conf\['cache_prefix']['default'] = 'mysite_';
 
 // Set no prefix explicitely for 'cache' and 'cache_bootstrap' bins.
-$conf['cache_prefix']['cache'] = FALSE;
-$conf['cache_prefix']['cache_bootstrap'] = FALSE;
+$conf\['cache_prefix']['cache'] = FALSE;
+$conf\['cache_prefix']['cache_bootstrap'] = FALSE;
 
 // Set another prefix for 'cache_menu' bin.
-$conf['cache_prefix']['cache_menu'] = 'menumysite_';
+$conf\['cache_prefix']['cache_menu'] = 'menumysite_';
 ```
 
 Note that this last notice is Redis only specific, because per default Redis
@@ -288,6 +332,8 @@ except when you use a proxy that blocks those commands such as Twemproxy.
 
 ## Lock
 
+**Not implemented yet!**
+
 Lock backend works on a single key per lock, it theorically guarantees the
 atomicity of operations therefore is usable in a sharded environement. Sadly
 if you use proxy assisted sharding such as Twemproxy, WATCH, MULTI and EXEC
@@ -300,6 +346,8 @@ of data consistency. If you use a smart sharding proxy it is supposed to work
 transparently without any hickups.
 
 ## Queue
+
+**Not implemented yet!**
 
 Queue is still in development. There might be problems in the long term for
 this component in sharded environments.

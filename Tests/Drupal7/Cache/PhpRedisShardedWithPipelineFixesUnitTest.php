@@ -15,7 +15,7 @@ class PhpRedisShardedWithPipelineFixesUnitTest extends FixesUnitTest
             'host' => $this->getDsn(),
         ];
 
-        $GLOBALS['conf']['redis_flush_mode'] = CacheBackend::FLUSH_SHARD_WITH_PIPELINING;
+        $GLOBALS['conf']['redis_cache_options']['flush_mode'] = CacheBackend::FLUSH_SHARD_WITH_PIPELINING;
     }
 
     protected function getDsnTarget()

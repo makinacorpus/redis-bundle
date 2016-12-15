@@ -9,8 +9,6 @@ use MakinaCorpus\RedisBundle\Cache\Impl\PredisCacheImpl;
 use MakinaCorpus\RedisBundle\Checksum\ChecksumValidator;
 use MakinaCorpus\RedisBundle\Checksum\Impl\PhpRedisChecksumStore;
 use MakinaCorpus\RedisBundle\Checksum\Impl\PredisChecksumStore;
-use MakinaCorpus\RedisBundle\Client\PhpRedisFactory;
-use MakinaCorpus\RedisBundle\Client\PredisFactory;
 use MakinaCorpus\RedisBundle\Client\StandaloneFactoryInterface;
 use MakinaCorpus\RedisBundle\Client\StandaloneManager;
 
@@ -128,31 +126,23 @@ class ClientFactory
      */
     static public function getOptionsForCacheBackend($bin)
     {
-        $options = ['cache_lifetime' => variable_get('cache_lifetime', 0)];
+        $options = [];
 
-        if (null !== ($value = variable_get('redis_flush_mode_' . $bin))) {
-            $options['flush_mode'] = (int)$value;
-        } else if (null !== ($value = (int)variable_get('redis_flush_mode'))) {
-            $options['flush_mode'] = (int)$value;
+        // Attempt to find backend-specific options
+        if (isset($GLOBALS['conf']['redis_cache_options'][$bin])) {
+            $options += $GLOBALS['conf']['redis_cache_options'][$bin];
         }
 
-        // Do not cast this value, it can be a string
-        if (null !== ($value = variable_get('redis_perm_ttl_' . $bin))) {
-            $options['perm_ttl'] = $value;
-        } else if (null !== ($value = variable_get('redis_perm_ttl'))) {
-            $options['perm_ttl'] = $value;
+        // And populate with defaults too, which means that the bin specific
+        // options that are not defined are going to be inherited from the
+        // global configuration.
+        if (isset($GLOBALS['conf']['redis_cache_options']['default'])) {
+            $options += $GLOBALS['conf']['redis_cache_options']['default'];
         }
 
-        if (null !== ($value = variable_get('redis_compression_' . $bin))) {
-            $options['compression'] = (bool)$value;
-        } else if (null !== ($value = variable_get('redis_compression'))) {
-            $options['compression'] = (bool)$value;
-        }
-
-        if (null !== ($value = variable_get('redis_compression_threshold_' . $bin))) {
-            $options['compression_threshold'] = (int)$value;
-        } else if (null !== ($value = variable_get('redis_compression_threshold'))) {
-            $options['compression_threshold'] = (int)$value;
+        // And yes, we can override the 'cache_lifetime' variable per bin!
+        if (!isset($options['cache_lifetime'])) {
+            $options['cache_lifetime'] = variable_get('cache_lifetime', 0);
         }
 
         return $options;

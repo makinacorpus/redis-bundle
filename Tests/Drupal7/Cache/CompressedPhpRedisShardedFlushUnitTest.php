@@ -15,9 +15,9 @@ class CompressedPhpRedisShardedFlushUnitTest extends FlushUnitTest
             'host' => $this->getDsn(),
         ];
 
-        $GLOBALS['conf']['redis_compression'] = true;
-        $GLOBALS['conf']['redis_compression_threshold'] = 3;
-        $GLOBALS['conf']['redis_flush_mode'] = CacheBackend::FLUSH_SHARD;
+        $GLOBALS['conf']['redis_cache_options']['compression'] = true;
+        $GLOBALS['conf']['redis_cache_options']['compression_threshold'] = 3;
+        $GLOBALS['conf']['redis_cache_options']['flush_mode'] = CacheBackend::FLUSH_SHARD;
     }
 
     protected function getDsnTarget()

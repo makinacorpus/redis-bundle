@@ -45,6 +45,39 @@ abstract class FixesUnitTest extends AbstractCacheTest
         return (new RedisCacheBackend($namespace));
     }
 
+    public function testCacheOptionsInheritance()
+    {
+        $GLOBALS['conf']['redis_cache_options']['default'] = [
+          'compression' => 1,
+          'flush_mode'  => 3,
+          'perm_ttl'    => "1 months",
+        ];
+
+        $GLOBALS['conf']['redis_cache_options']['cache_bootstrap'] = [
+          'compression' => 0,
+          'flush_mode'  => 0,
+        ];
+
+        $backend = $this->getDrupalBackend('cache_page');
+        $options = $backend->getNestedCacheBackend()->getOptions();
+        // Check for default options to be propagated
+        $this->assertSame('1 months', $options['perm_ttl']);
+        $this->assertSame(3, $options['flush_mode']);
+        $this->assertSame(1, $options['compression']);
+        // Also check for module defaults
+        $this->assertSame(100, $options['compression_threshold']);
+
+        $backend = $this->getDrupalBackend('cache_bootstrap');
+        $options = $backend->getNestedCacheBackend()->getOptions();
+        // Check for default options to be inherited
+        $this->assertSame('1 months', $options['perm_ttl']);
+        // Check for specific options to be propagated
+        $this->assertSame(0, $options['flush_mode']);
+        $this->assertSame(0, $options['compression']);
+        // Also check for module defaults
+        $this->assertSame(100, $options['compression_threshold']);
+    }
+
     public function testTemporaryCacheExpire()
     {
         $backend = $this->getDrupalBackend();
@@ -109,7 +142,7 @@ abstract class FixesUnitTest extends AbstractCacheTest
     public function testUserSetDefaultPermTtl()
     {
         // This also testes string parsing. Not fully, but at least one case.
-        variable_set('redis_perm_ttl', "3 months");
+        $GLOBALS['conf']['redis_cache_options']['default']['perm_ttl'] = "3 months";
         $backend = $this->getBackend();
         $this->assertSame(7776000, $backend->getPermTtl());
     }
@@ -117,7 +150,7 @@ abstract class FixesUnitTest extends AbstractCacheTest
     public function testUserSetPermTtl()
     {
         // This also testes string parsing. Not fully, but at least one case.
-        variable_set('redis_perm_ttl', "1 months");
+        $GLOBALS['conf']['redis_cache_options']['default']['perm_ttl'] = "1 months";
         $backend = $this->getBackend();
         $this->assertSame(2592000, $backend->getPermTtl());
     }
@@ -152,7 +185,7 @@ abstract class FixesUnitTest extends AbstractCacheTest
     public function testPermTtl()
     {
         // This also testes string parsing. Not fully, but at least one case.
-        variable_set('redis_perm_ttl', "2 seconds");
+        $GLOBALS['conf']['redis_cache_options']['default']['perm_ttl'] = "2 seconds";
         $backend = $this->getDrupalBackend();
         $realBackend = $backend->getNestedCacheBackend();
         $this->assertSame(2, $realBackend->getPermTtl());

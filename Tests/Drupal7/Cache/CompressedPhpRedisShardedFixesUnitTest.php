@@ -15,22 +15,13 @@ class CompressedPhpRedisShardedFixesUnitTest extends FixesUnitTest
             'host' => $this->getDsn(),
         ];
 
-        $GLOBALS['conf']['redis_compression'] = true;
-        $GLOBALS['conf']['redis_compression_threshold'] = 3;
-        $GLOBALS['conf']['redis_flush_mode'] = CacheBackend::FLUSH_SHARD_WITH_PIPELINING;
+        $GLOBALS['conf']['redis_cache_options']['compression'] = true;
+        $GLOBALS['conf']['redis_cache_options']['compression_threshold'] = 3;
+        $GLOBALS['conf']['redis_cache_options']['flush_mode'] = CacheBackend::FLUSH_SHARD_WITH_PIPELINING;
     }
 
     protected function getDsnTarget()
     {
         return 'REDIS_DSN_SHARD';
-    }
-
-    public function testOptionsPropagation()
-    {
-        $options = $this->getBackend()->getOptions();
-
-        $this->assertTrue($options['compression']);
-        $this->assertSame(3, $options['compression_threshold']);
-        $this->assertSame(CacheBackend::FLUSH_SHARD_WITH_PIPELINING, $options['flush_mode']);
     }
 }

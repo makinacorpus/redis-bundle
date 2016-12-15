@@ -15,7 +15,7 @@ class PhpRedisShardedFixesUnitTest extends FixesUnitTest
             'host' => $this->getDsn(),
         ];
 
-        $GLOBALS['conf']['redis_flush_mode'] = CacheBackend::FLUSH_SHARD;
+        $GLOBALS['conf']['redis_cache_options']['flush_mode'] = CacheBackend::FLUSH_SHARD;
     }
 
     protected function getDsnTarget()

@@ -15,8 +15,8 @@ class PhpRedisFlushUnitTest extends FlushUnitTest
             'host' => $this->getDsn(),
         ];
 
-        $GLOBALS['conf']['redis_compression'] = false;
-        $GLOBALS['conf']['redis_compression_threshold'] = 3;
+        $GLOBALS['conf']['redis_cache_options']['compression'] = false;
+        $GLOBALS['conf']['redis_cache_options']['compression_threshold'] = 3;
     }
 
     public function testOptionsPropagation()
