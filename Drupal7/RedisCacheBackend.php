@@ -51,7 +51,7 @@ class RedisCacheBackend implements \DrupalCacheInterface
         // life time. For example, this allows the 'cache_page' bin to return
         // potentially invalid items under certain conditions to have a speed
         // boost in response time.
-        $this->allowTemporaryFlush = (0 === $options['cache_lifetime']);
+        $this->allowTemporaryFlush = (0 === (int)$options['cache_lifetime']);
     }
 
     /**

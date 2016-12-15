@@ -416,7 +416,7 @@ class CacheBackend
         // Any item that predates the latest global invalidation is considered
         // as invalid, but should not be deleted because the user might asked
         // explicitely for invalid items to be allowed.
-        if (!$this->checksumValidator->isChecksumValid(self::CHECKSUM_ALL, $values['created'])) {
+        if (!$this->checksumValidator->isChecksumValid(self::CHECKSUM_INVALID, $values['created'])) {
             $values['valid'] = 0;
         }
 
@@ -665,7 +665,7 @@ class CacheBackend
      */
     public function flush()
     {
-          $this->checksumValidator->invalidateChecksum(self::CHECKSUM_ALL);
+          $this->checksumValidator->invalidateAllChecksums([self::CHECKSUM_ALL, self::CHECKSUM_VOLATILE]);
 
           if (!$this->isSharded) {
               // When the backend is allowed to use LUA EVAL command, we will
