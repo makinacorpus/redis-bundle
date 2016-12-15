@@ -159,34 +159,6 @@ class ClientFactory
     }
 
     /**
-     * Create the redis client factory
-     *
-     * @return StandaloneFactoryInterface
-     */
-    static private function createFactory($clientName)
-    {
-        switch ($clientName) {
-
-            case 'phpredis':
-                $class = PhpRedisFactory::class;
-                break;
-
-            case 'predis':
-                $class = PredisFactory::class;
-                break;
-
-            default:
-                throw new \Exception(sprintf("Client '%s' not implemented", $clientName));
-        }
-
-        if (!class_exists($class)) {
-            throw new \Exception(sprintf("Class '%s' does not exist", $class));
-        }
-
-        return new $class();
-    }
-
-    /**
      * Create the cache implementation depending on the asked factory
      *
      * @param string $bin
