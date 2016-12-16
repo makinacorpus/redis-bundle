@@ -55,6 +55,8 @@ Here is a simple yet working easy way to setup the module.
 This method will allow Drupal to use Redis for all caches and locks
 and path alias cache replacement.
 
+Add into your ``settings.php`` file:
+
 ```php
 $conf['redis_servers'] = [
   'default' => [
