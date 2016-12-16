@@ -33,11 +33,15 @@ class SerializeHydrator implements HydratorInterface
             if (empty($data)) {
                 throw new EntryIsBrokenException();
             } else {
-                $data = unserialize($data);
+                $value = unserialize($data);
 
-                if ($data === false) {
-                    throw new EntryIsBrokenException();
+                if ($value === false) {
+                    if ($data !== serialize(false)) {
+                        throw new EntryIsBrokenException();
+                    }
                 }
+
+                return $value;
             }
         }
 
