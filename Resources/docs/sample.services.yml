@@ -1,2 +1,3 @@
-services:
-  # @todo
+parameters:
+    redis.client.default.type: phpredis
+    redis.client.default.host: tcp://127.0.0.1/0
