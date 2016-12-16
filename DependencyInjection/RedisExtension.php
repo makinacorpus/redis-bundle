@@ -10,7 +10,7 @@ use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 
 use MakinaCorpus\RedisBundle\Client\StandaloneManager;
 
-class MakinaCorpusRedisExtension extends Extension
+class RedisExtension extends Extension
 {
     /**
      * {@inheritdoc}
