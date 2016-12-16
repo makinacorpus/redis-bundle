@@ -461,7 +461,12 @@ class CacheBackend
             }
         }
 
-        $values['data'] = $this->hydrator->decode($values['data'], $values['flags']);
+        try {
+            $values['data'] = $this->hydrator->decode($values['data'], $values['flags']);
+        } catch (EntryIsBrokenException $e) {
+            return self::ENTRY_SHOULD_BE_DELETED;
+        }
+
         $values['created'] = (int)$values['created'];
 
         return (object)$values;

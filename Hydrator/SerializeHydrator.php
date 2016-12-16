@@ -14,7 +14,7 @@ class SerializeHydrator implements HydratorInterface
         // Let Redis handle the data types itself when possible.
         if (!is_string($data)) {
             $data = serialize($data);
-            $flags += Flag::SERIALIZED;
+            $flags |= Flag::SERIALIZED;
         }
 
         return $data;

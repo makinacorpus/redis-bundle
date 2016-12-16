@@ -32,7 +32,7 @@ class CompressHydrator implements HydratorInterface
 
         if (!$this->sizeThreshold || strlen($data) > $this->sizeThreshold) {
             $data = gzcompress($data, $this->compressionRatio);
-            $flags += Flag::COMPRESSED;
+            $flags |= Flag::COMPRESSED;
         }
 
         return $data;
