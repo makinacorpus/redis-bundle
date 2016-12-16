@@ -117,16 +117,3 @@ Backend specific options will inherit from the ``default`` if defined, which
 means that options that you leave unspecified in a specific bin definition will
 fetch values from the defaults you defined aside.
 
-
-## Tell Drupal to use the cache backend
-
-Usual cache backend configuration, as follows, to add into your ``settings.php``
-file like any other backend:
-
-```php
-$conf\['cache_backends'][]            = 'sites/all/modules/redis/redis.autoload.inc';
-$conf['cache_class_cache']           = '\\MakinaCorpus\\RedisBundle\\Drupal7\\RedisCacheBackend';
-$conf['cache_class_cache_menu']      = '\\MakinaCorpus\\RedisBundle\\Drupal7\\RedisCacheBackend';
-$conf['cache_class_cache_bootstrap'] = '\\MakinaCorpus\\RedisBundle\\Drupal7\\RedisCacheBackend';
-// ... Any other bins.
-```
