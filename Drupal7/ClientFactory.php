@@ -11,6 +11,7 @@ use MakinaCorpus\RedisBundle\Checksum\Impl\PhpRedisChecksumStore;
 use MakinaCorpus\RedisBundle\Checksum\Impl\PredisChecksumStore;
 use MakinaCorpus\RedisBundle\Client\StandaloneFactoryInterface;
 use MakinaCorpus\RedisBundle\Client\StandaloneManager;
+use MakinaCorpus\RedisBundle\Realm;
 
 /**
  * This static class only reason to exist is to tie Drupal global
@@ -178,7 +179,7 @@ class ClientFactory
         }
 
         /** @var \MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface $impl */
-        return new $class($manager->getClient(), $bin, self::getDefaultPrefix($bin), false);
+        return new $class($manager->getClient(Realm::CACHE), $bin, self::getDefaultPrefix($bin), false);
     }
 
     /**
@@ -211,7 +212,7 @@ class ClientFactory
         }
 
         /** @var \MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface $impl */
-        return new $class($manager->getClient(), $bin, self::getDefaultPrefix($bin), false);
+        return new $class($manager->getClient(Realm::TAGS), $bin, self::getDefaultPrefix($bin), false);
     }
 
     /**
