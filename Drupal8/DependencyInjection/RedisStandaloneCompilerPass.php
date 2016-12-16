@@ -1,6 +1,6 @@
 <?php
 
-namespace MakinaCorpus\RedisBundle\Drupal8;
+namespace MakinaCorpus\RedisBundle\Drupal8\DependencyInjection;
 
 use Drupal\Core\Site\Settings;
 

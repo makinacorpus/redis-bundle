@@ -3,7 +3,7 @@
 namespace MakinaCorpus\RedisBundle\Tests\Drupal8\Cache;
 
 use MakinaCorpus\RedisBundle\Cache\CacheBackend;
-use MakinaCorpus\RedisBundle\Drupal8\RedisCacheBackend;
+use MakinaCorpus\RedisBundle\Drupal8\Cache\RedisCacheBackend;
 use MakinaCorpus\RedisBundle\Tests\AbstractCacheTest;
 
 /**
@@ -158,7 +158,7 @@ abstract class FixesUnitTest extends AbstractCacheTest
         // Retrieve and test cache objects.
         foreach ($variables as $cid => $value) {
             $object = $backend->get($cid);
-            $this->assertTrue(is_object($object));
+            $this->assertNotFalse($object);
             $this->assertSame($value, $object->data);
         }
     }

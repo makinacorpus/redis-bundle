@@ -35,7 +35,7 @@ services:
 
     # Custom cache backend factory, without this Drupal will not be happy.
     cache.backend.redis:
-        class: MakinaCorpus\RedisBundle\Drupal8\RedisCacheBackendFactory
+        class: MakinaCorpus\RedisBundle\Drupal8\Cache\RedisCacheBackendFactory
         arguments: ['@redis.standalone_manager']
 
     # Checksum validator from the RedisBundle package, it has its own interface
@@ -49,6 +49,6 @@ services:
     # This will actually overrides the core one, but hey, Redis will be faster
     # anyway, so let him be instead of core one.
     cache_tags.invalidator.checksum:
-       class: MakinaCorpus\RedisBundle\Drupal8\RedisCacheTagsChecksum
+       class: MakinaCorpus\RedisBundle\Drupal8\Cache\RedisCacheTagsChecksum
        arguments: ['@redis.checksum_validator']
        tags: [{name: cache_tags_invalidator}]

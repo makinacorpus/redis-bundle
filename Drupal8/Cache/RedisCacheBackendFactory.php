@@ -1,6 +1,6 @@
 <?php
 
-namespace MakinaCorpus\RedisBundle\Drupal8;
+namespace MakinaCorpus\RedisBundle\Drupal8\Cache;
 
 use Drupal\Core\Cache\CacheFactoryInterface;
 use Drupal\Core\Site\Settings;
@@ -15,6 +15,7 @@ use MakinaCorpus\RedisBundle\Checksum\Impl\PhpRedisChecksumStore;
 use MakinaCorpus\RedisBundle\Checksum\Impl\PredisChecksumStore;
 use MakinaCorpus\RedisBundle\Client\StandaloneFactoryInterface;
 use MakinaCorpus\RedisBundle\Client\StandaloneManager;
+use MakinaCorpus\RedisBundle\Realm;
 
 class RedisCacheBackendFactory implements CacheFactoryInterface
 {
@@ -25,7 +26,7 @@ class RedisCacheBackendFactory implements CacheFactoryInterface
     /**
      * Default constructor
      *
-     * @param StandaloneFactoryInterface $factory
+     * @param StandaloneManager $factory
      *   Standalone factory, because Drupal forces us to dynamically create
      *   the cache backend instance, we cannot pre-register it into the
      *   services definitions
@@ -94,7 +95,7 @@ class RedisCacheBackendFactory implements CacheFactoryInterface
         }
 
         /** @var \MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface $impl */
-        return new $class($this->manager->getClient(), $bin, null /*self::getDefaultPrefix($bin)*/, false);
+        return new $class($this->manager->getClient(Realm::CACHE), $bin, null /*self::getDefaultPrefix($bin)*/, false);
     }
 
     /**
@@ -123,7 +124,7 @@ class RedisCacheBackendFactory implements CacheFactoryInterface
         }
 
         /** @var \MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface $impl */
-        return new $class($this->manager->getClient(), 'cache_tags', null /*self::getDefaultPrefix($bin)*/, false);
+        return new $class($this->manager->getClient(Realm::TAGS), 'cache_tags', null /*self::getDefaultPrefix($bin)*/, false);
     }
 
     /**
