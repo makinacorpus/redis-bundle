@@ -1,0 +1,54 @@
+#
+# Configuration for Drupal 8
+#
+# There is no parameters in here, everything will be set in the settings.php
+# file, within the $settings variable. You have two variables you can set,
+# following the documentation:
+#
+#   - first one is 'redis.servers' which will contain the client list, with
+#     all associated realms, client options, and client types
+#
+#   - second one is 'redis.cache_options' which will contain the various
+#     cache bins options
+#
+
+services:
+
+    # For Drupal 8 we are going to fallback on factory usage because core does
+    # not supports the Configuration passes, using the Extension classes, for
+    # now it'll do fine.
+    # It would have been clever to find a way to use the Symfony configuration
+    # mecanism instead, compiled container would be faster to run, and we would
+    # benefit from code sharing for the two environments.
+    redis.standalone_manager:
+        public: false
+        class: MakinaCorpus\RedisBundle\Client\StandaloneManager
+        # Arguments are injected thanks to a compilation pass that will use the
+        # Settings::get() Drupal helper. This means that those settings will end
+        # up in the generated container and won't be overrideable until a real
+        # cache clear.
+        #
+        # @todo Since we don't have a module, we need to find a way to force
+        #   Drupal to run this compilation pass, or override the manager with
+        #   a specific constructor that will use settings. God I hate Drupal.
+        arguments: []
+
+    # Custom cache backend factory, without this Drupal will not be happy.
+    cache.backend.redis:
+        class: MakinaCorpus\RedisBundle\Drupal8\RedisCacheBackendFactory
+        arguments: ['@redis.standalone_manager']
+
+    # Checksum validator from the RedisBundle package, it has its own interface
+    # and is not compatible with Drupal in any way, but we need it to be
+    # injectable in our own serivices
+    redis.checksum_validator:
+        public: false
+        class: MakinaCorpus\RedisBundle\Checksum\ChecksumValidator
+        factory: cache.backend.redis:getChecksumValidator
+
+    # This will actually overrides the core one, but hey, Redis will be faster
+    # anyway, so let him be instead of core one.
+    cache_tags.invalidator.checksum:
+       class: MakinaCorpus\RedisBundle\Drupal8\RedisCacheTagsChecksum
+       arguments: ['@redis.checksum_validator']
+       tags: [{name: cache_tags_invalidator}]
