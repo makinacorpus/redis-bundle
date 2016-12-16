@@ -3,9 +3,11 @@
 namespace MakinaCorpus\RedisBundle\Cache;
 
 use MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface;
-use MakinaCorpus\RedisBundle\Cache\Impl\CompressedEntryHydrator;
-use MakinaCorpus\RedisBundle\Cache\Impl\EntryHydrator;
 use MakinaCorpus\RedisBundle\Checksum\ChecksumValidatorInterface;
+use MakinaCorpus\RedisBundle\Hydrator\CompressHydrator;
+use MakinaCorpus\RedisBundle\Hydrator\SerializeHydrator;
+use MakinaCorpus\RedisBundle\Hydrator\HydratorChain;
+use MakinaCorpus\RedisBundle\Hydrator\EntryIsBrokenException;
 
 /**
  * Cache backend implementation.
@@ -119,9 +121,9 @@ class CacheBackend
     private $tagValidator;
 
     /**
-     * @var EntryHydrator
+     * @var HydratorChain
      */
-    private $entryHydrator;
+    private $hydrator;
 
     /**
      * Original options passed at the constructor
@@ -295,10 +297,10 @@ class CacheBackend
      */
     private function refreshCapabilities()
     {
+        $this->hydrator = new HydratorChain([new SerializeHydrator()]);
+
         if ($this->options['compression']) {
-            $this->entryHydrator = new CompressedEntryHydrator((int)$this->options['compression_threshold']);
-        } else {
-            $this->entryHydrator = new EntryHydrator();
+            $this->hydrator->append(new CompressHydrator((int)$this->options['compression_threshold']));
         }
 
         $mode = (int)$this->options['flush_mode'];
@@ -366,12 +368,16 @@ class CacheBackend
         }
 
         $checksum = $this->checksumValidator->getValidChecksumFor($checksumIdList);
-        $values = $this->entryHydrator->create($cid, $data, $checksum, $expire, $tags);
 
-        // We need to handle tags from this code, entry hydrators should not
-        // care about tags since it's only for data consistency and not for
-        // other business purpose.
-        $values['tags'] = implode(',', $tags);
+        $values = [
+            'cid'     => $cid,
+            'created' => $checksum,
+            'expire'  => $expire,
+            'valid'   => 1,
+            'tags'    => implode(',', $tags),
+            'data'    => $data,
+            'flags'   => 0,
+        ];
 
         if ($tags) {
             if ($this->allowTagsUsage) {
@@ -380,6 +386,8 @@ class CacheBackend
                 trigger_error("using tags on a backend that does not supports it", E_DEPRECATED);
             }
         }
+
+        $values['data'] = $this->hydrator->encode($values['data'], $values['flags']);
 
         return $values;
     }
@@ -400,7 +408,7 @@ class CacheBackend
             return self::ENTRY_IS_INVALID;
         }
 
-        $values += ['valid' => 1, 'volatile' => 0, 'compressed' => 0, 'tags' => ''];
+        $values += ['valid' => 1, 'volatile' => 0, 'compressed' => 0, 'tags' => '', 'flags' => 0];
 
         // Ensure that tags is always an array
         $values['tags'] = $values['tags'] ? explode(',', $values['tags']) : [];
@@ -453,7 +461,10 @@ class CacheBackend
             }
         }
 
-        return $this->entryHydrator->expand($values);
+        $values['data'] = $this->hydrator->decode($values['data'], $values['flags']);
+        $values['created'] = (int)$values['created'];
+
+        return (object)$values;
     }
 
     /**
