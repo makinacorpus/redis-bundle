@@ -40,11 +40,9 @@ class PhpRedisFactory implements StandaloneFactoryInterface
             if ($options['failover']) {
                 throw new \InvalidArgumentException("'failover' is only supported with \\RedisCluster");
             }
-            if ($options['read_timeout']) {
-                throw new \InvalidArgumentException("'read_timeout' is not supported with \\Redis yet");
-            }
 
             $client = new \Redis();
+
             /** @var $dsn Dsn */
             $dsn = $options['host'][0];
 
@@ -55,6 +53,10 @@ class PhpRedisFactory implements StandaloneFactoryInterface
             } else {
                 $client->connect($dsn->formatPhpRedis(), $dsn->getPort(), $options['timeout']);
             }
+        }
+
+        if ($options['read_timeout']) {
+            $client->setOption(\Redis::OPT_READ_TIMEOUT, $options['read_timeout']);
         }
 
         if (isset($options['password'])) {

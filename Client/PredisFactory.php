@@ -12,24 +12,14 @@ class PredisFactory implements StandaloneFactoryInterface
      */
     public function createClient($options = [])
     {
+        // Translates a few options to Predis terminology.
+        if ($options['read_timeout']) {
+            $options['read_write_timeout'] = $options['read_timeout'];
+        }
+
         if ($options['cluster']) {
 
             throw new \Exception("Cluster is not supported by the standalone manager yet");
-
-            /*
-            if ($options['persistent']) {
-                throw new \InvalidArgumentException("Persistent connections are not supported by the \RedisCluster yet");
-            }
-
-            $args = [];
-            $args[] = null; // Unnamed cluster connection
-            // next parameter is an array of host:port strings
-            // next parameter is timeout
-            // next parameter is read_timeout
-            // next parameter is persistent (boolean)
-
-            $client = new \RedisCluster(...$args);
-             */
 
         } else if (1 < count($options['host'])) {
 
