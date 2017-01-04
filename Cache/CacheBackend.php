@@ -5,9 +5,9 @@ namespace MakinaCorpus\RedisBundle\Cache;
 use MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface;
 use MakinaCorpus\RedisBundle\Checksum\ChecksumValidatorInterface;
 use MakinaCorpus\RedisBundle\Hydrator\CompressHydrator;
-use MakinaCorpus\RedisBundle\Hydrator\SerializeHydrator;
-use MakinaCorpus\RedisBundle\Hydrator\HydratorChain;
 use MakinaCorpus\RedisBundle\Hydrator\EntryIsBrokenException;
+use MakinaCorpus\RedisBundle\Hydrator\HydratorChain;
+use MakinaCorpus\RedisBundle\Hydrator\SerializeHydrator;
 
 /**
  * Cache backend implementation.

@@ -18,12 +18,10 @@ class PhpRedisSessionHandler implements \SessionHandlerInterface
      * @param \Redis $client
      * @param string $namespace
      * @param string $namespaceAsHash
-     * @apram string $prefix
+     * @param string $prefix
      */
-    public function __construct($client, $namespace, $namespaceAsHash = false, $prefix = null)
+    public function __construct($client, $namespace = null, $namespaceAsHash = false, $prefix = null)
     {
-        $this->collection = $namespace;
-
         $this->setClient($client);
         $this->setNamespace($namespace, $namespaceAsHash);
         $this->setPrefix($prefix);
