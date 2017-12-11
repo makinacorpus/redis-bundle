@@ -3,12 +3,12 @@
 namespace MakinaCorpus\RedisBundle\DependencyInjection;
 
 use MakinaCorpus\RedisBundle\Client\Dsn;
-
+use MakinaCorpus\RedisBundle\Client\StandaloneManager;
+use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
-
-use MakinaCorpus\RedisBundle\Client\StandaloneManager;
 
 class RedisExtension extends Extension
 {
@@ -20,15 +20,21 @@ class RedisExtension extends Extension
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
 
-//         $loader = new Loader\YamlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
-//         $loader->load('services.yml');
-
         if (empty($config['client'])) {
             $config['client']['default'] = StandaloneManager::getDefaultClientOptions();
         }
 
         foreach ($config['client'] as $realm => $options) {
             $this->createClientDefinition($container, $realm, $options);
+        }
+    }
+
+    private function autoconfigureDrupal(ContainerBuilder $container)
+    {
+        // Check for Drupal 8 context, and load configuration
+        if (class_exists('\\Drupal\\Core\\DrupalKernel')) {
+            $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config/drupal'));
+            $loader->load('services.yml');
         }
     }
 

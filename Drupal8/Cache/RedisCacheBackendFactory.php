@@ -4,18 +4,14 @@ namespace MakinaCorpus\RedisBundle\Drupal8\Cache;
 
 use Drupal\Core\Cache\CacheFactoryInterface;
 use Drupal\Core\Site\Settings;
-
+use MakinaCorpus\RedisBundle\Realm;
 use MakinaCorpus\RedisBundle\Cache\CacheBackend;
-use MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface;
 use MakinaCorpus\RedisBundle\Cache\Impl\PhpRedisCacheImpl;
 use MakinaCorpus\RedisBundle\Cache\Impl\PredisCacheImpl;
 use MakinaCorpus\RedisBundle\Checksum\ChecksumValidator;
-use MakinaCorpus\RedisBundle\Checksum\ChecksumValidatorInterface;
 use MakinaCorpus\RedisBundle\Checksum\Impl\PhpRedisChecksumStore;
 use MakinaCorpus\RedisBundle\Checksum\Impl\PredisChecksumStore;
-use MakinaCorpus\RedisBundle\Client\StandaloneFactoryInterface;
 use MakinaCorpus\RedisBundle\Client\StandaloneManager;
-use MakinaCorpus\RedisBundle\Realm;
 
 class RedisCacheBackendFactory implements CacheFactoryInterface
 {
@@ -39,7 +35,7 @@ class RedisCacheBackendFactory implements CacheFactoryInterface
     /**
      * Get checksum validator
      *
-     * @return ChecksumValidatorInterface
+     * @return \MakinaCorpus\RedisBundle\Checksum\ChecksumValidatorInterface
      */
     public function getChecksumValidator()
     {
@@ -72,7 +68,7 @@ class RedisCacheBackendFactory implements CacheFactoryInterface
      *
      * @param string $bin
      *
-     * @return StandaloneFactoryInterface
+     * @return \MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface
      */
     private function createCacheImpl($bin)
     {
@@ -101,7 +97,7 @@ class RedisCacheBackendFactory implements CacheFactoryInterface
     /**
      * Create the cache implementation depending on the asked factory
      *
-     * @return StandaloneFactoryInterface
+     * @return \MakinaCorpus\RedisBundle\Checksum\ChecksumStoreInterface
      */
     private function createChecksumStoreImpl()
     {

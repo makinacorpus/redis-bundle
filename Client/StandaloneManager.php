@@ -109,7 +109,7 @@ class StandaloneManager
     /**
      * Create factory for realm depending on the configured type
      *
-     * @param unknown $realm
+     * @param string $realm
      */
     private function createFactoryFor($realm)
     {

@@ -1,0 +1,29 @@
+services:
+
+    # Custom cache backend factory, without this Drupal will not be happy.
+    cache.backend.redis:
+        class: MakinaCorpus\RedisBundle\Drupal8\Cache\RedisCacheBackendFactory
+        arguments: ['@redis.standalone_manager']
+
+    redis.cache.backend:
+        class: MakinaCorpus\RedisBundle\Drupal8\Cache\CacheImplInterface
+        arguments: ['@redis.standalone_manager']
+
+    # This will actually overrides the core one, but hey, Redis will be faster
+    # anyway, so let him be instead of core one.
+    cache_tags.invalidator.checksum:
+        class: MakinaCorpus\RedisBundle\Drupal8\Cache\RedisCacheTagsChecksum
+        arguments: ['@redis.client.default']
+        tags: [{name: cache_tags_invalidator}]
+
+    # Real session handler
+    session_handler.redis:
+        public: false
+        class: MakinaCorpus\RedisBundle\Session\PhpRedisSessionHandler
+        arguments: ['@redis.client.default', 'session']
+
+    # This service in core is a real service, not an alias, but we replace it
+    # with an alias toward our own service, because the way it is registered
+    # with compiler pass does not allow us to proceed otherwise properly.
+    session_handler.storage:
+        alias: session_handler.redis
