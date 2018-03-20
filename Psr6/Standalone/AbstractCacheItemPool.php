@@ -171,7 +171,7 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
      *
      * @return boolean
      */
-    abstract protected function isChecksumValid($reference, $checksum);
+    abstract protected function isChecksumValidSince($reference, $checksum);
 
     /**
      * Fetch given checksum
@@ -280,7 +280,7 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
      */
     protected function isItemChecksumValid($checksum)
     {
-        return $this->isChecksumValid($this->getCurrentChecksum(self::CHECKSUM_POOL), $checksum);
+        return $this->isChecksumValidSince($this->getCurrentChecksum(self::CHECKSUM_POOL), $checksum);
     }
 
     /**

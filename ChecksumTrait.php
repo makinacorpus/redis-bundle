@@ -5,6 +5,17 @@ namespace MakinaCorpus\RedisBundle;
 trait ChecksumTrait
 {
     /**
+     * Is the given checksum valid
+     *
+     * @param string $reference
+     * @param string $checksum
+     */
+    public function isChecksumValidSince($reference, $checksum)
+    {
+        return $reference <= $checksum;
+    }
+
+    /**
      * From the given timestamp build an incremental safe time-based identifier.
      *
      * Due to potential accidental cache wipes, when a server goes down in the
