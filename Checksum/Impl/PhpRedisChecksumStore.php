@@ -2,9 +2,8 @@
 
 namespace MakinaCorpus\RedisBundle\Checksum\Impl;
 
-use MakinaCorpus\RedisBundle\Checksum\ChecksumStoreInterface;
-use MakinaCorpus\RedisBundle\RedisAwareInterface;
 use MakinaCorpus\RedisBundle\RedisAwareTrait;
+use MakinaCorpus\RedisBundle\Checksum\ChecksumStoreInterface;
 
 /**
  * This implementation uses a HASH to store everything, all operations are
@@ -14,7 +13,7 @@ use MakinaCorpus\RedisBundle\RedisAwareTrait;
  * This also means that if you loose one of those keys due to Redis LRU
  * mechanism, you will loose all your checksums and everything will go invalid.
  */
-class PhpRedisChecksumStore implements ChecksumStoreInterface, RedisAwareInterface
+class PhpRedisChecksumStore implements ChecksumStoreInterface
 {
     use RedisAwareTrait;
 

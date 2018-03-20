@@ -3,6 +3,7 @@
 namespace MakinaCorpus\RedisBundle\Tests;
 
 use MakinaCorpus\RedisBundle\Cache\CacheBackend;
+use MakinaCorpus\RedisBundle\Cache\CacheItem;
 use MakinaCorpus\RedisBundle\Cache\Impl\CacheImplInterface;
 use MakinaCorpus\RedisBundle\Cache\Impl\PhpRedisCacheImpl;
 use MakinaCorpus\RedisBundle\Cache\Impl\PredisCacheImpl;
@@ -24,7 +25,7 @@ abstract class AbstractCacheTest extends AbstractClientTest
     protected function getCacheOptions()
     {
         return [
-            'cache_lifetime'          => CacheBackend::ITEM_IS_PERMANENT,
+            'cache_lifetime'          => CacheItem::EXPIRE_IS_PERMANENT,
             'flush_mode'              => CacheBackend::FLUSH_NORMAL,
             'perm_ttl'                => CacheBackend::LIFETIME_PERM_DEFAULT,
             'compression'             => false,

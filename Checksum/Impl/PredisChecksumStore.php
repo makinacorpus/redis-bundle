@@ -3,7 +3,6 @@
 namespace MakinaCorpus\RedisBundle\Checksum\Impl;
 
 use MakinaCorpus\RedisBundle\Checksum\ChecksumStoreInterface;
-use MakinaCorpus\RedisBundle\RedisAwareInterface;
 use MakinaCorpus\RedisBundle\RedisAwareTrait;
 
 /**
@@ -14,7 +13,7 @@ use MakinaCorpus\RedisBundle\RedisAwareTrait;
  * This also means that if you loose one of those keys due to Redis LRU
  * mechanism, you will loose all your checksums and everything will go invalid.
  */
-class PredisChecksumStore implements ChecksumStoreInterface, RedisAwareInterface
+class PredisChecksumStore implements ChecksumStoreInterface
 {
     use RedisAwareTrait;
 

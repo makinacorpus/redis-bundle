@@ -2,77 +2,64 @@
 
 namespace MakinaCorpus\RedisBundle\Cache\Impl;
 
-use MakinaCorpus\RedisBundle\RedisAwareInterface;
-
 /**
  * Real cache backend primitives, it aims to provide a framework-agnostic yet
  * complete cache implementation, to be profixied for various existing backends
  * such as Drupal, Doctrine, Psr and Symfony.
  */
-interface CacheImplInterface extends RedisAwareInterface
+interface CacheImplInterface
 {
     /**
      * Get a single entry
      *
      * @param string $id
      *
-     * @return stdClass
-     *   Cache entry or false if the entry does not exists.
+     * @return false|string[]
+     *   If invalid or non existing, return an invalid cache item
      */
-    public function get($id);
+    public function get(string $id);
 
     /**
      * Get multiple entries
      *
      * @param string[] $idList
      *
-     * @return stdClass[]
-     *   Existing cache entries keyed by id,
+     * @return string[][]
+     *   Existing cache entries keyed by identifier
      */
-    public function getMultiple(array $idList);
+    public function getMultiple(array $idList) : array;
 
     /**
      * Set a single entry
-     *
-     * @param string $id
-     * @param mixed $data
-     * @param int $ttl
-     * @param boolean $volatile
      */
-    public function set($id, $data, $ttl = null, $volatile = false);
+    public function set(string $id, $data, int $ttl = null, bool $volatile = false);
 
     /**
      * Delete a single entry
-     *
-     * @param string $cid
      */
-    public function delete($id);
+    public function delete(string $id);
 
     /**
      * Delete multiple entries
      *
      * This method should not use a single DEL command but use a pipeline instead
      *
-     * @param array $idList
+     * @param string[] $idList
      */
     public function deleteMultiple(array $idList);
 
     /**
      * Delete entries by prefix
-     *
-     * @param string $prefix
      */
-    public function deleteByPrefix($prefix);
+    public function deleteByPrefix(string $prefix);
 
     /**
      * Mark a single item as being invalid
      *
      * This method should add the 'valid' property on the hash if exists
      * and set it to 0 for selected items.
-     *
-     * @param string $id
      */
-    public function invalidate($id);
+    public function invalidate(string $id);
 
     /**
      * Mark a set of items as being invalid

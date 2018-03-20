@@ -39,32 +39,67 @@ trait RedisAwareTrait
         $this->setPrefix($prefix);
     }
 
+    /**
+     * Set client
+     *
+     * @param mixed $client
+     *   Object type depends upon the targeted client library
+     */
     final public function setClient($client)
     {
         $this->client = $client;
     }
 
+    /**
+     * Get Redis client connection
+     *
+     * @return mixed
+     *   Object type depends upon the targeted client library
+     */
     final public function getClient()
     {
         return $this->client;
     }
 
+    /**
+     * Set prefix
+     *
+     * @param string $prefix
+     */
     final public function setPrefix($prefix)
     {
         $this->prefix = $prefix;
     }
 
+    /**
+     * Get business prefix
+     *
+     * @return string
+     */
     final public function getPrefix()
     {
         return $this->prefix;
     }
 
+    /**
+     * Set namespace
+     *
+     * @param string $namespace
+     * @param boolean $namespaceAsHash
+     *   Set this to true, and namespace will be used as a redis cluster hash
+     *   for grouping all keys issued by this component in the same redis node
+     */
     final public function setNamespace($namespace, $namespaceAsHash = false)
     {
         $this->namespace = $namespace;
         $this->namespaceAsHash = $namespaceAsHash;
     }
 
+    /**
+     * Get namespace
+     *
+     * @return string
+     */
     final public function getNamespace()
     {
         return $this->namespace;
@@ -107,13 +142,32 @@ trait RedisAwareTrait
             } else {
                 $key[] = $parts;
             }
- 
+
             $ret[$index] = implode(':', array_merge($prefix, $key));
         }
 
         return $ret;
     }
 
+    /**
+     * Get full key name using the set prefix
+     *
+     * If your namespace is not used as a cluster hash, you may arbitrarily set
+     * any part of your path containing {SOMESTRING} to use the cluster grouping
+     * but please be coherent with yourself and don't set more than one hash.
+     *
+     * @param string|string[] $parts
+     *   Arbitrary number of strings to compose the key
+     * @param string $hash
+     *   Hash is the cluster hash that ensures that keys are on the same server
+     *   when working with cluster mode
+     *
+     * @return string
+     *   If namespace is used as cluster hash, you would obtain this:
+     *      [PREFIX][:{NAMESPACE}]:PART1[:PART2[:...]]
+     *   else, you will just have this:
+     *      [PREFIX][:NAMESPACE]:PART1[:PART2[:...]]
+     */
     public function getKey($parts = [])
     {
         $key = [];

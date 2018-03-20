@@ -2,7 +2,7 @@
 
 namespace MakinaCorpus\RedisBundle\Tests\Drupal8\Cache;
 
-use MakinaCorpus\RedisBundle\Cache\CacheBackend;
+use MakinaCorpus\RedisBundle\Cache\CacheItem;
 use MakinaCorpus\RedisBundle\Drupal8\Cache\RedisCacheBackend;
 use MakinaCorpus\RedisBundle\Tests\AbstractCacheTest;
 
@@ -36,7 +36,7 @@ abstract class FixesUnitTest extends AbstractCacheTest
         $this->assertSame($withBackslash, $cached->data);
         $this->assertEquals(1, $cached->valid);
         // We need to round because microtime may be rounded up in the backend.
-        $this->assertEquals($cached->expire, CacheBackend::ITEM_IS_PERMANENT);
+        $this->assertEquals($cached->expire, CacheItem::EXPIRE_IS_PERMANENT);
 
         $this->assertSame(false, $backend->get('test2'));
         $backend->set('test2', ['value' => 3], time() + 3);
@@ -59,7 +59,7 @@ abstract class FixesUnitTest extends AbstractCacheTest
         $this->assertTrue(is_object($cached));
         $this->assertSame($withEOF, $cached->data);
         $this->assertEquals(1, $cached->valid);
-        $this->assertEquals($cached->expire, CacheBackend::ITEM_IS_PERMANENT);
+        $this->assertEquals($cached->expire, CacheItem::EXPIRE_IS_PERMANENT);
 
         $this->assertSame(false, $backend->get('test5'));
         $withEOFAndSemicolon = ['foo' => "\nEOF;\ndata"];
@@ -68,7 +68,7 @@ abstract class FixesUnitTest extends AbstractCacheTest
         $this->assertTrue(is_object($cached));
         $this->assertSame($withEOFAndSemicolon, $cached->data);
         $this->assertEquals(1, $cached->valid);
-        $this->assertEquals($cached->expire, CacheBackend::ITEM_IS_PERMANENT);
+        $this->assertEquals($cached->expire, CacheItem::EXPIRE_IS_PERMANENT);
 
         $withVariable = array('foo' => '$bar');
         $backend->set('test6', $withVariable);
@@ -106,7 +106,7 @@ abstract class FixesUnitTest extends AbstractCacheTest
         $this->assertFalse($backend->get('test8'));
 
         try {
-            $backend->set('assertion_test', 'value', CacheBackend::ITEM_IS_PERMANENT, ['node' => [3, 5, 7]]);
+            $backend->set('assertion_test', 'value', CacheItem::EXPIRE_IS_PERMANENT, ['node' => [3, 5, 7]]);
             $this->fail();
         } catch (\Exception $e) {}
     }
@@ -197,7 +197,7 @@ abstract class FixesUnitTest extends AbstractCacheTest
         $this->assertTrue(isset($ret['test7']));
         // Test return - ensure that objects has expected properties.
         $this->assertEquals(1, $ret['test2']->valid);
-        $this->assertEquals($ret['test2']->expire, CacheBackend::ITEM_IS_PERMANENT);
+        $this->assertEquals($ret['test2']->expire, CacheItem::EXPIRE_IS_PERMANENT);
         // Test return - ensure it does not contain nonexistent cache ids.
         $this->assertFalse(isset($ret['test19']));
         $this->assertFalse(isset($ret['test21']));
@@ -272,13 +272,13 @@ abstract class FixesUnitTest extends AbstractCacheTest
 
         $this->assertEquals($cached['cid_1']->data, $items['cid_1']['data']);
         $this->assertEquals(1, $cached['cid_1']->valid);
-        $this->assertEquals($cached['cid_1']->expire, CacheBackend::ITEM_IS_PERMANENT);
+        $this->assertEquals($cached['cid_1']->expire, CacheItem::EXPIRE_IS_PERMANENT);
 
         $this->assertEquals($cached['cid_2']->data, $items['cid_2']['data']);
-        $this->assertEquals($cached['cid_2']->expire, CacheBackend::ITEM_IS_PERMANENT);
+        $this->assertEquals($cached['cid_2']->expire, CacheItem::EXPIRE_IS_PERMANENT);
 
         $this->assertEquals($cached['cid_3']->data, $items['cid_3']['data']);
-        $this->assertEquals($cached['cid_3']->expire, CacheBackend::ITEM_IS_PERMANENT);
+        $this->assertEquals($cached['cid_3']->expire, CacheItem::EXPIRE_IS_PERMANENT);
 
         $this->assertEquals($cached['cid_4']->data, $items['cid_4']['data']);
         $this->assertEquals($cached['cid_4']->expire, $futureExpiration);
@@ -346,9 +346,9 @@ abstract class FixesUnitTest extends AbstractCacheTest
         $backendB = new RedisCacheBackend($this->getBackend('bootstrap'));
 
         // Set both expiring and permanent keys.
-        $backendA->set('test1', 1, CacheBackend::ITEM_IS_PERMANENT);
+        $backendA->set('test1', 1, CacheItem::EXPIRE_IS_PERMANENT);
         $backendA->set('test2', 3, time() + 1000);
-        $backendB->set('test3', 4, CacheBackend::ITEM_IS_PERMANENT);
+        $backendB->set('test3', 4, CacheItem::EXPIRE_IS_PERMANENT);
 
         $backendA->deleteAll();
 
@@ -406,9 +406,9 @@ abstract class FixesUnitTest extends AbstractCacheTest
         $defaultValue = 'some super value that is mostly random ' . uniqid();
 
         // Create two cache entries with the same tag and tag value.
-        $backend->set('test_cid_invalidate1', $defaultValue, CacheBackend::ITEM_IS_PERMANENT, ['test_tag:2']);
-        $backend->set('test_cid_invalidate2', $defaultValue, CacheBackend::ITEM_IS_PERMANENT, ['test_tag:2']);
-        $backend->set('test_cid_invalidate2_nofetch', $defaultValue, CacheBackend::ITEM_IS_PERMANENT, ['test_tag:2']);
+        $backend->set('test_cid_invalidate1', $defaultValue, CacheItem::EXPIRE_IS_PERMANENT, ['test_tag:2']);
+        $backend->set('test_cid_invalidate2', $defaultValue, CacheItem::EXPIRE_IS_PERMANENT, ['test_tag:2']);
+        $backend->set('test_cid_invalidate2_nofetch', $defaultValue, CacheItem::EXPIRE_IS_PERMANENT, ['test_tag:2']);
         $this->assertTrue($backend->get('test_cid_invalidate1') && $backend->get('test_cid_invalidate2'));
 
         // Invalidate test_tag of value 1. This should invalidate both entries.
@@ -425,8 +425,8 @@ abstract class FixesUnitTest extends AbstractCacheTest
         $this->assertFalse($backend->get('test_cid_invalidate2_nofetch'));
 
         // Create two cache entries with the same tag and an array tag value.
-        $backend->set('test_cid_invalidate1', $defaultValue, CacheBackend::ITEM_IS_PERMANENT, ['test_tag:1']);
-        $backend->set('test_cid_invalidate2', $defaultValue, CacheBackend::ITEM_IS_PERMANENT, ['test_tag:1']);
+        $backend->set('test_cid_invalidate1', $defaultValue, CacheItem::EXPIRE_IS_PERMANENT, ['test_tag:1']);
+        $backend->set('test_cid_invalidate2', $defaultValue, CacheItem::EXPIRE_IS_PERMANENT, ['test_tag:1']);
         $this->assertTrue($backend->get('test_cid_invalidate1') && $backend->get('test_cid_invalidate2'));
 
         // Invalidate test_tag of value 1. This should invalidate both entries.
@@ -438,9 +438,9 @@ abstract class FixesUnitTest extends AbstractCacheTest
         $this->assertNotFalse($backend->get('test_cid_invalidate2', true));
 
         // Create three cache entries with a mix of tags and tag values.
-        $backend->set('test_cid_invalidate1', $defaultValue, CacheBackend::ITEM_IS_PERMANENT, ['test_tag:1']);
-        $backend->set('test_cid_invalidate2', $defaultValue, CacheBackend::ITEM_IS_PERMANENT, ['test_tag:2']);
-        $backend->set('test_cid_invalidate3', $defaultValue, CacheBackend::ITEM_IS_PERMANENT, ['test_tag_foo:3']);
+        $backend->set('test_cid_invalidate1', $defaultValue, CacheItem::EXPIRE_IS_PERMANENT, ['test_tag:1']);
+        $backend->set('test_cid_invalidate2', $defaultValue, CacheItem::EXPIRE_IS_PERMANENT, ['test_tag:2']);
+        $backend->set('test_cid_invalidate3', $defaultValue, CacheItem::EXPIRE_IS_PERMANENT, ['test_tag_foo:3']);
         $this->assertTrue($backend->get('test_cid_invalidate1') && $backend->get('test_cid_invalidate2') && $backend->get('test_cid_invalidate3'));
         $tagValidator->invalidateAllChecksums(['test_tag_foo:3']);
         $this->assertTrue($backend->get('test_cid_invalidate1') && $backend->get('test_cid_invalidate2'));
@@ -457,7 +457,7 @@ abstract class FixesUnitTest extends AbstractCacheTest
         }
 
         foreach ($binInstances as $instance) {
-            $instance->set('test', $defaultValue, CacheBackend::ITEM_IS_PERMANENT, $tags);
+            $instance->set('test', $defaultValue, CacheItem::EXPIRE_IS_PERMANENT, $tags);
             $this->assertNotFalse($instance->get('test'));
         }
 
@@ -483,9 +483,9 @@ abstract class FixesUnitTest extends AbstractCacheTest
         $backendB = new RedisCacheBackend($this->getBackend());
 
         // Set both expiring and permanent keys.
-        $backendA->set('test1', 1, CacheBackend::ITEM_IS_PERMANENT);
+        $backendA->set('test1', 1, CacheItem::EXPIRE_IS_PERMANENT);
         $backendA->set('test2', 3, time() + 1000);
-        $backendB->set('test3', 4, CacheBackend::ITEM_IS_PERMANENT);
+        $backendB->set('test3', 4, CacheItem::EXPIRE_IS_PERMANENT);
 
         $backendA->invalidateAll();
 
@@ -502,9 +502,9 @@ abstract class FixesUnitTest extends AbstractCacheTest
         $backendB = new RedisCacheBackend($this->getBackend('bootstrap'));
 
         // Set both expiring and permanent keys.
-        $backendA->set('test1', 1, CacheBackend::ITEM_IS_PERMANENT);
+        $backendA->set('test1', 1, CacheItem::EXPIRE_IS_PERMANENT);
         $backendA->set('test2', 3, time() + 1000);
-        $backendB->set('test3', 4, CacheBackend::ITEM_IS_PERMANENT);
+        $backendB->set('test3', 4, CacheItem::EXPIRE_IS_PERMANENT);
 
         $backendA->removeBin();
 

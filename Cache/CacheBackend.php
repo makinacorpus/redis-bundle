@@ -23,18 +23,6 @@ use MakinaCorpus\RedisBundle\Hydrator\SerializeHydrator;
 class CacheBackend
 {
     /**
-     * Cache item has no expiry time and should be kept indefinitly; only
-     * manual clear calls or LRU evicition will erase it.
-     */
-    const ITEM_IS_PERMANENT = 0;
-
-    /**
-     * Cache item is temporary, its expiry time is computed from the default
-     * 'cache_lifetime' options set in the backend at construct time.
-     */
-    const ITEM_IS_VOLATILE = -1;
-
-    /**
      * Default lifetime for permanent items.
      * Approximatively 1 year.
      */
@@ -135,7 +123,7 @@ class CacheBackend
     /**
      * Does this instance will check tags on load
      *
-     * @var boolean
+     * @var bool
      */
     private $allowTagsUsage = false;
 
@@ -143,7 +131,7 @@ class CacheBackend
      * When in shard mode, the backend cannot proceed to multiple keys
      * operations, and won't delete keys on flush calls.
      *
-     * @var boolean
+     * @var bool
      */
     private $isSharded = false;
 
@@ -151,12 +139,12 @@ class CacheBackend
      * When in shard mode, the proxy may or may not support pipelining,
      * Twemproxy is known to support it.
      *
-     * @var boolean
+     * @var bool
      */
     private $allowPipeline = false;
 
     /**
-     * Default TTL for self::ITEM_IS_PERMANENT items.
+     * Default TTL for CacheItem::EXPIRE_IS_PERMANENT items.
      *
      * See "Default lifetime for permanent items" section of README.txt
      * file for a comprehensive explaination of why this exists.
@@ -175,9 +163,9 @@ class CacheBackend
     /**
      * Is this bin in shard mode
      *
-     * @return boolean
+     * @return bool
      */
-    public function isSharded()
+    public function isSharded() : bool
     {
         return $this->isSharded;
     }
@@ -185,9 +173,9 @@ class CacheBackend
     /**
      * Does this bin allow pipelining through sharded environment
      *
-     * @return boolean
+     * @return bool
      */
-    public function allowPipeline()
+    public function allowPipeline() : bool
     {
         return $this->allowPipeline;
     }
@@ -195,31 +183,25 @@ class CacheBackend
     /**
      * Does this instance allow tag usage
      *
-     * @return boolean
+     * @return bool
      */
-    public function allowTagsUsage()
+    public function allowTagsUsage() : bool
     {
         return $this->allowTagsUsage;
     }
 
     /**
-     * Get TTL for self::ITEM_IS_PERMANENT items.
-     *
-     * @return int
-     *   Lifetime in seconds.
+     * Get TTL for CacheItem::EXPIRE_IS_PERMANENT items
      */
-    public function getPermTtl()
+    public function getPermTtl() : int
     {
         return $this->permTtl;
     }
 
     /**
-     * Get maximum TTL for all items.
-     *
-     * @return int
-     *   Lifetime in seconds.
+     * Get maximum TTL for all items
      */
-    public function getMaxTtl()
+    public function getMaxTtl() : int
     {
         return $this->maxTtl;
     }
@@ -253,10 +235,8 @@ class CacheBackend
 
     /**
      * Get current tag invalidator
-     *
-     * @return ChecksumValidatorInterface
      */
-    public function getTagValidator()
+    public function getTagValidator() : ChecksumValidatorInterface
     {
         return $this->tagValidator;
     }
@@ -270,7 +250,7 @@ class CacheBackend
     public function setOptions(array $options)
     {
         $this->options = $options + [
-            'cache_lifetime'        => self::ITEM_IS_PERMANENT,
+            'cache_lifetime'        => CacheItem::EXPIRE_IS_PERMANENT,
             'flush_mode'            => self::FLUSH_NORMAL,
             'perm_ttl'              => self::LIFETIME_PERM_DEFAULT,
             'compression'           => false,
@@ -287,7 +267,7 @@ class CacheBackend
      *
      * @param mixed[] $options
      */
-    public function getOptions()
+    public function getOptions() : array
     {
         return $this->options;
     }
@@ -351,45 +331,32 @@ class CacheBackend
 
     /**
      * Create cache entry
-     *
-     * @param string $cid
-     * @param mixed $data
-     * @param int $expire
-     * @param string[] $tags
-     *
-     * @return array
      */
-    protected function createEntryHash($cid, $data, $expire = self::ITEM_IS_PERMANENT, array $tags = [])
+    protected function createEntry(string $cid, $data, int $expire = CacheItem::EXPIRE_IS_PERMANENT, array $tags = []) : CacheItem
     {
-        if (self::ITEM_IS_VOLATILE === $expire) {
+        if (CacheItem::EXPIRE_IS_VOLATILE === $expire) {
             $checksumIdList = [self::CHECKSUM_ALL, self::CHECKSUM_INVALID, self::CHECKSUM_VOLATILE];
         } else {
             $checksumIdList = [self::CHECKSUM_ALL, self::CHECKSUM_INVALID];
         }
 
-        $checksum = $this->checksumValidator->getValidChecksumFor($checksumIdList);
-
-        $values = [
-            'cid'     => $cid,
-            'created' => $checksum,
-            'expire'  => $expire,
-            'valid'   => 1,
-            'tags'    => implode(',', $tags),
-            'data'    => $data,
-            'flags'   => 0,
-        ];
+        $item = new CacheItem();
+        $item->cid = $cid;
+        $item->created = $this->checksumValidator->getValidChecksumFor($checksumIdList);
+        $item->expire = $expire;
+        $item->tags = $tags;
 
         if ($tags) {
             if ($this->allowTagsUsage) {
-                $values['tags_checksum'] = $this->tagValidator->getValidChecksumFor($tags);
+                $item->tags_checksum = $this->tagValidator->getValidChecksumFor($tags);
             } else {
                 trigger_error("using tags on a backend that does not supports it", E_DEPRECATED);
             }
         }
 
-        $values['data'] = $this->hydrator->encode($values['data'], $values['flags']);
+        $item->data = $this->hydrator->encode($data, $item->flags);
 
-        return $values;
+        return $item;
     }
 
     /**
@@ -398,8 +365,7 @@ class CacheBackend
      * @param array $values
      *   Raw values fetched from Redis server data
      *
-     * @return \stdClass
-     *   Or false if entry is invalid
+     * @return int|CacheItem
      */
     protected function expandEntry(array $values, $allowInvalid = false)
     {
@@ -408,42 +374,45 @@ class CacheBackend
             return self::ENTRY_IS_INVALID;
         }
 
-        $values += ['valid' => 1, 'volatile' => 0, 'compressed' => 0, 'tags' => '', 'flags' => 0];
+        $item = new CacheItem();
+        $item->fromArray($values);
 
-        // Ensure that tags is always an array
-        $values['tags'] = $values['tags'] ? explode(',', $values['tags']) : [];
+        // This is the very first check to do since it does not involve querying
+        // the backend for a validity checksum, easy one.
+        if (!$allowInvalid && !$item->valid) {
+            return self::ENTRY_IS_INVALID;
+        }
 
         // Any items that predates the latest flush, no matter it's being
         // volatile or not, should be dropped, this would happen only in
         // scenarios where it's sharded in theory, but data may stall at
         // some point
-        if (!$this->checksumValidator->isChecksumValid(self::CHECKSUM_ALL, $values['created'])) {
+        if (!$this->checksumValidator->isChecksumValid(self::CHECKSUM_ALL, $item->created)) {
             return self::ENTRY_SHOULD_BE_DELETED;
         }
 
         // Any item that predates the latest global invalidation is considered
         // as invalid, but should not be deleted because the user might asked
         // explicitely for invalid items to be allowed.
-        if (!$this->checksumValidator->isChecksumValid(self::CHECKSUM_INVALID, $values['created'])) {
-            $values['valid'] = 0;
-        }
-
-        // Check for invalid entries
-        if (!$allowInvalid && !$values['valid']) {
-            return self::ENTRY_IS_INVALID;
+        if (!$this->checksumValidator->isChecksumValid(self::CHECKSUM_INVALID, $item->created)) {
+            // Check for invalid entries
+            if (!$allowInvalid) {
+                return self::ENTRY_IS_INVALID;
+            }
+            $item->valid = false;
         }
 
         // Check for volatile item validity.
-        if ($values['volatile'] && !$this->checksumValidator->isChecksumValid(self::CHECKSUM_VOLATILE, $values['created'])) {
+        if (($item->expire == CacheItem::EXPIRE_IS_VOLATILE) && !$this->checksumValidator->isChecksumValid(self::CHECKSUM_VOLATILE, $item->created)) {
             return self::ENTRY_SHOULD_BE_DELETED;
         }
 
         // And now deal with tags, if tagging is enabled.
-        if ($values['tags']) {
+        if ($item->tags) {
 
             // This entry can be incomplete, and cannot be processed, it would
             // be considered as broken and should be deleted?
-            if (empty($values['tags_checksum'])) {
+            if (!$item->tags_checksum) {
                 return self::ENTRY_SHOULD_BE_DELETED;
             }
 
@@ -452,7 +421,7 @@ class CacheBackend
             // checksums.
             if ($this->allowTagsUsage) {
                 if (!$allowInvalid) {
-                    if (!$this->tagValidator->areChecksumsValid($values['tags'], $values['tags_checksum'])) {
+                    if (!$this->tagValidator->areChecksumsValid($item->tags, $item->tags_checksum)) {
                         return self::ENTRY_IS_INVALID;
                     }
                 }
@@ -462,29 +431,27 @@ class CacheBackend
         }
 
         try {
-            $values['data'] = $this->hydrator->decode($values['data'], $values['flags']);
+            $item->data = $this->hydrator->decode($item->data, $item->flags);
         } catch (EntryIsBrokenException $e) {
             return self::ENTRY_SHOULD_BE_DELETED;
         }
 
-        $values['created'] = (int)$values['created'];
-
-        return (object)$values;
+        return $item;
     }
 
     /**
      * Get a single item
      *
      * @param string $cid
-     * @param boolean $allowInvalid
+     * @param bool $allowInvalid
      *   Allow invalidated items to be fetched, this means that items beyond
      *   their expiry time can be fetched for performance reasons
      *
-     * @return \stdClass
+     * @return false|CacheItem
      *   An object containing additional information about the item state,
      *   and the 'data' property containig the cached data
      */
-    public function get($cid, $allowInvalid = false)
+    public function get(string $cid, bool $allowInvalid = false)
     {
         $values = $this->backend->get($cid);
 
@@ -511,15 +478,15 @@ class CacheBackend
      * @param string[] $cids
      *   List of cache identifiers to load, valid loaded items keys will be
      *   unset() from this array
-     * @param boolean $allowInvalid
+     * @param bool $allowInvalid
      *   Allow invalidated items to be fetched, this means that items beyond
      *   their expiry time can be fetched for performance reasons
      *
-     * @return \stdClass[]
+     * @return CacheItem[]
      *   An set of objects each containing additional information about the
      *   item state, and the 'data' property containig the cached data
      */
-    public function getMultiple(&$cids, $allowInvalid = false)
+    public function getMultiple(array &$cids, bool $allowInvalid = false) : array
     {
         $ret    = array();
         $delete = array();
@@ -572,16 +539,16 @@ class CacheBackend
     /**
      * {@inheritdoc}
      */
-    public function set($cid, $data, $expire = self::ITEM_IS_PERMANENT, array $tags = [])
+    public function set(string $cid, $data, int $expire = CacheItem::EXPIRE_IS_PERMANENT, array $tags = [])
     {
-        $hash   = $this->createEntryHash($cid, $data, $expire, $tags);
+        $item = $this->createEntry($cid, $data, $expire, $tags);
         $maxTtl = $this->getMaxTtl();
 
         switch ($expire) {
 
-            case self::ITEM_IS_PERMANENT:
-            case self::ITEM_IS_VOLATILE:
-                $this->backend->set($cid, $hash, $maxTtl, ($expire == self::ITEM_IS_VOLATILE));
+            case CacheItem::EXPIRE_IS_PERMANENT:
+            case CacheItem::EXPIRE_IS_VOLATILE:
+                $this->backend->set($cid, $item->toArray(), $maxTtl, ($expire == CacheItem::EXPIRE_IS_VOLATILE));
                 break;
 
             default:
@@ -596,7 +563,7 @@ class CacheBackend
                     if ($maxTtl && $maxTtl < $ttl) {
                         $ttl = $maxTtl;
                     }
-                    $this->backend->set($cid, $hash, $ttl, false);
+                    $this->backend->set($cid, $item->toArray(), $ttl, false);
                 }
                 break;
         }
@@ -614,25 +581,19 @@ class CacheBackend
      */
     public function setMultiple(array $items)
     {
-        // @todo Base implementation, sufficient for now
         foreach ($items as $cid => $item) {
-
             if (!is_array($item) || !isset($item['data'])) {
-                $item = ['data' => $item];
+                $this->set($cid, $item);
+            } else {
+                $this->set($cid, $item['data'], $item['expire'] ?? CacheItem::EXPIRE_IS_PERMANENT, $item['tags'] ?? []);
             }
-
-            $item += ['expire' => self::ITEM_IS_PERMANENT, 'tags' => []];
-
-            $this->set($cid, $item['data'], $item['expire'], $item['tags']);
         }
     }
 
     /**
      * Deletes a single item from the cache
-     *
-     * @param string $cid
      */
-    public function delete($cid)
+    public function delete(string $cid)
     {
         return $this->backend->delete($cid);
     }
@@ -640,7 +601,7 @@ class CacheBackend
     /**
      * Deletes multiple items from the cache
      *
-     * @param array $cids
+     * @param string[] $cids
      */
     public function deleteMultiple(array $cids)
     {

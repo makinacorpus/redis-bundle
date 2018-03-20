@@ -389,7 +389,7 @@ abstract class AbstractCacheItemPool implements CacheItemPoolInterface
     public function save(CacheItemInterface $item)
     {
         if (!$item instanceof CacheItem) {
-            throw new InvalidArgumentException(
+            throw new \InvalidArgumentException(
                 sprintf(
                     "Given item with key %s must be an instance of %s",
                     $item->getKey(),

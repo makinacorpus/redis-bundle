@@ -2,7 +2,7 @@
 
 namespace MakinaCorpus\RedisBundle\Hydrator;
 
-use MakinaCorpus\RedisBundle\Flag;
+use MakinaCorpus\RedisBundle\Cache\CacheItem;
 
 class SerializeHydrator implements HydratorInterface
 {
@@ -14,7 +14,7 @@ class SerializeHydrator implements HydratorInterface
         // Let Redis handle the data types itself when possible.
         if (!is_string($data)) {
             $data = serialize($data);
-            $flags |= Flag::SERIALIZED;
+            $flags |= CacheItem::FLAG_SERIALIZED;
         }
 
         return $data;
@@ -29,7 +29,7 @@ class SerializeHydrator implements HydratorInterface
         // way we ensure that faster operations such as checksum verification
         // is done before and incorrect entries don't uselessly get
         // uncompressed.
-        if ($flags & Flag::SERIALIZED) {
+        if ($flags & CacheItem::FLAG_SERIALIZED) {
             if (empty($data)) {
                 throw new EntryIsBrokenException();
             } else {

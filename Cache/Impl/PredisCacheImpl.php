@@ -11,7 +11,7 @@ class PredisCacheImpl extends AbstractCacheImpl
     /**
      * {@inheritdoc}
      */
-    public function get($id)
+    public function get(string $id)
     {
         $client = $this->getClient();
         $key    = $this->getKey($id);
@@ -30,7 +30,7 @@ class PredisCacheImpl extends AbstractCacheImpl
     /**
      * {@inheritdoc}
      */
-    public function getMultiple(array $idList)
+    public function getMultiple(array $idList) : array
     {
         $ret = array();
 
@@ -55,7 +55,7 @@ class PredisCacheImpl extends AbstractCacheImpl
     /**
      * {@inheritdoc}
      */
-    public function set($id, $data, $ttl = null, $volatile = false)
+    public function set(string $id, $data, int $ttl = null, bool $volatile = false)
     {
         // Ensure TTL consistency: if the caller gives us an expiry timestamp
         // in the past the key will expire now and will never be read.
@@ -81,7 +81,7 @@ class PredisCacheImpl extends AbstractCacheImpl
     /**
      * {@inheritdoc}
      */
-    public function delete($id)
+    public function delete(string $id)
     {
         $client = $this->getClient();
         $client->del($this->getKey($id));
@@ -102,7 +102,7 @@ class PredisCacheImpl extends AbstractCacheImpl
     /**
      * {@inheritdoc}
      */
-    public function deleteByPrefix($prefix)
+    public function deleteByPrefix(string $prefix)
     {
         $client = $this->getClient();
         $ret = $client->eval(self::EVAL_DELETE_PREFIX, 0, $this->getKey($prefix . '*'));
@@ -114,7 +114,7 @@ class PredisCacheImpl extends AbstractCacheImpl
     /**
      * {@inheritdoc}
      */
-    public function invalidate($id)
+    public function invalidate(string $id)
     {
         throw new \Exception("Not implemented yet");
     }

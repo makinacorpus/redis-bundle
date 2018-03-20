@@ -2,7 +2,7 @@
 
 namespace MakinaCorpus\RedisBundle\Hydrator;
 
-use MakinaCorpus\RedisBundle\Flag;
+use MakinaCorpus\RedisBundle\Cache\CacheItem;
 
 /**
  * This typically brings 80..85% compression in ~20ms/mb write, 5ms/mb read.
@@ -32,7 +32,7 @@ class CompressHydrator implements HydratorInterface
 
         if (!$this->sizeThreshold || strlen($data) > $this->sizeThreshold) {
             $data = gzcompress($data, $this->compressionRatio);
-            $flags |= Flag::COMPRESSED;
+            $flags |= CacheItem::FLAG_COMPRESSED;
         }
 
         return $data;
@@ -47,7 +47,7 @@ class CompressHydrator implements HydratorInterface
         // way we ensure that faster operations such as checksum verification
         // is done before and incorrect entries don't uselessly get
         // uncompressed.
-        if ($flags & Flag::COMPRESSED) {
+        if ($flags & CacheItem::FLAG_COMPRESSED) {
             if (empty($data)) {
                 throw new EntryIsBrokenException();
             } else {

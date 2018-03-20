@@ -4,7 +4,6 @@ namespace MakinaCorpus\RedisBundle\Drupal8\Cache;
 
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Cache\CacheBackendInterface;
-
 use MakinaCorpus\RedisBundle\Cache\CacheBackend;
 
 /**

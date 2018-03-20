@@ -3,6 +3,7 @@
 namespace MakinaCorpus\RedisBundle\Tests\Drupal7\Cache;
 
 use MakinaCorpus\RedisBundle\Cache\CacheBackend;
+use MakinaCorpus\RedisBundle\Cache\CacheItem;
 use MakinaCorpus\RedisBundle\Drupal7\RedisCacheBackend;
 use MakinaCorpus\RedisBundle\Tests\AbstractCacheTest;
 
@@ -84,7 +85,7 @@ abstract class FixesUnitTest extends AbstractCacheTest
         $realBackend = $backend->getNestedCacheBackend();
 
         // Permanent entry.
-        $backend->set('test1', 'foo', CacheBackend::ITEM_IS_PERMANENT);
+        $backend->set('test1', 'foo', CacheItem::EXPIRE_IS_PERMANENT);
         $data = $backend->get('test1');
         $this->assertNotFalse($data);
         $this->assertSame('foo', $data->data);
@@ -97,7 +98,7 @@ abstract class FixesUnitTest extends AbstractCacheTest
 
         // Expiring entry with permanent default lifetime.
         $this->alterOptions($realBackend, ['cache_lifetime' =>  0]);
-        $backend->set('test2', 'bar', CacheBackend::ITEM_IS_VOLATILE);
+        $backend->set('test2', 'bar', CacheItem::EXPIRE_IS_VOLATILE);
         sleep(2);
         $data = $backend->get('test2');
         $this->assertNotFalse($data);
@@ -123,7 +124,7 @@ abstract class FixesUnitTest extends AbstractCacheTest
 
         // Expiring entry with short default lifetime.
         $this->alterOptions($realBackend, ['cache_lifetime' =>  1]);
-        $backend->set('test5', 'foobaz', CacheBackend::ITEM_IS_VOLATILE);
+        $backend->set('test5', 'foobaz', CacheItem::EXPIRE_IS_VOLATILE);
         $data = $backend->get('test5');
         $this->assertNotFalse($data);
         $this->assertSame('foobaz', $data->data);

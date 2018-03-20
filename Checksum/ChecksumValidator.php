@@ -205,7 +205,7 @@ final class ChecksumValidator implements ChecksumValidatorInterface
      * checksum will tell us if the entry pre-dates the current checksum or not,
      * thus telling us its state. The main problem we experience is that Redis
      * is being so fast it is able to create and drop entries at same second,
-     * sometime even the same micro second. The only safe way to avoid conflicts
+     * sometime even the same milisecond. The only safe way to avoid conflicts
      * is to checksum using an arbitrary computed number (a sequence).
      *
      * Drupal core does exactly this thus tags checksums are additions of each tag
